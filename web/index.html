@@ -472,7 +472,7 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .umedian span{position:absolute;right:4px;top:2px;font-size:11px;color:var(--green);background:var(--bg);padding:0 3px}
 .upeak{position:absolute;left:50%;width:6px;height:6px;border-radius:50%;background:var(--red);transform:translateX(-50%);z-index:3}
 .ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:11px;color:var(--fg2);font-family:var(--mono)}
-.utip{position:absolute;bottom:100%;z-index:6;min-width:170px;max-width:240px;padding:9px 11px;margin-bottom:6px;background:#1f2430;color:#f2f4f8;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.26);font-size:11px;line-height:1.5;pointer-events:none;text-align:left;transform:translateX(-50%)}
+.utip{position:absolute;bottom:100%;z-index:6;min-width:170px;max-width:240px;padding:9px 11px;margin-bottom:6px;background:#1f2430;color:#f2f4f8;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.26);font-size:11px;line-height:1.5;pointer-events:none;text-align:left}
 .utip b{display:block;font-family:var(--mono);font-size:11px;margin-bottom:5px;color:#fff}
 .utip-row{display:flex;justify-content:space-between;gap:14px;white-space:nowrap}
 .utip-row em{font-style:normal;color:#a9b1c0}
@@ -1626,19 +1626,23 @@ const app=createApp({
     if(row.tool_tokens){const parts=Object.entries(row.tool_tokens).filter(([,v])=>v>0).map(([k,v])=>(toolNames[k]||k)+' '+tok(v));if(parts.length)rows.push(['按工具',parts.join(' · ')])}
     return rows;
   }
-  // 浮层定位：水平与垂直都要避让，否则会被 .uchart 的 overflow:hidden 裁掉。
-  // 曾经只处理了左右：高柱子的浮层向上顶出容器，被裁成一条黑线（用户直接问
-  // "上面这条黑色的线是啥意思"）。垂直方向不能再靠 bottom:100%，因为浮层高于
-  // 柱子顶端到容器顶部的空间时必然溢出——改成按柱子高度切换"放在柱子上方"或
-  // "放在柱子内部靠上"，并给出高度阈值。
+  // 浮层定位：必须始终落在 .uchart 内部，否则被 overflow:hidden 裁成一条黑线。
+  //
+  // 走错过的两步，记在这里免得再犯：
+  //  1) 只做左右避让 → 高柱子的浮层向上顶出容器；
+  //  2) 按柱子高度设阈值（>62% 才改放内部）→ **治不了**，因为 .uchart 只有
+  //     300px 而浮层高 ~180px，矮柱子上方同样放不下。实测 30 根里 27 根溢出。
+  //
+  // 结论：垂直方向不能用 bottom:100% 锚在柱子顶端，只能锚在**图表内部**。
+  // 横向也不能靠"比例阈值"猜：浮层宽 240px，最左/最右几根柱子按比例判断仍会越界
+  // （实测第 0 根溢出左边 70px）。改成按柱子**中心相对于绘图区的百分比**定位，
+  // 再用 CSS 的 translateX(-N%) 把浮层拉回容器内，边界处它自然贴边。
   function tipStyle(idx){
     const total=daily.value.length||1;
-    const ratio=total>1?idx/(total-1):0.5;
-    const horiz=ratio>0.72?{right:'2px'}:ratio<0.28?{left:'2px'}:{left:'50%'};
-    const row=daily.value[idx];
-    // 柱子占到容器高度约 62% 以上时，上方已放不下浮层，改为贴在柱子内部顶端
-    const tall=row?barHeight(row)>62:false;
-    return tall?{...horiz,top:'8px',bottom:'auto'}:{...horiz,bottom:'100%'};
+    const center=total>1?(idx+0.5)/total*100:50;
+    // 距左右边缘不足一个浮层宽度时（约 17% 的绘图宽），改成贴边对齐
+    const shift=center<17?0:center>83?-100:-50;
+    return {left:center+'%',transform:`translateX(${shift}%)`,top:'6px',bottom:'auto'};
   }
   // y 轴刻度：0 到当前最大值切 4 段，给柱高一个可读参照
   const yTicks=computed(()=>{const m=maxValue.value;return [1,0.5,0].map(f=>({v:f*m,pct:f*100}))})

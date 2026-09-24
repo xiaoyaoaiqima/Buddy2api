@@ -310,19 +310,33 @@ def test_hero_facts_each_express_one_thing(usage_src):
 # 病根：浮层固定 bottom:100%（贴柱子顶端向上），高柱子会把浮层顶出 .uchart 的
 # 可视区，而 .uchart 是 overflow:hidden。tipStyle 当时只做了左右翻转，漏了上下。
 
-def test_tooltip_avoids_vertical_clipping(usage_src):
-    """浮层必须处理垂直避让，不能只靠 bottom:100%。
+def test_tooltip_is_anchored_inside_the_chart(usage_src):
+    """浮层必须锚定在图表内部，不能锚在柱子顶端。
 
-    高柱子上方放不下时，要改为贴在柱子内部顶端，否则被 overflow:hidden 裁成黑线。
+    走错过的两步（都实测过）：
+      1) 只做左右避让 → 高柱子的浮层向上顶出容器，被 overflow:hidden 裁成黑线；
+      2) 按柱子高度设阈值（>62% 才改放内部）→ 治不了：.uchart 只有 300px 而浮层
+         高 ~180px，矮柱子上方同样放不下。实测 30 根里 **27 根溢出**。
+
+    所以垂直方向只能是固定的容器内锚点（top），不能出现 bottom:100%。
     """
     fn = re.search(r"function tipStyle\(idx\)\{(.*?)\n  \}", usage_src, re.S)
     assert fn, "找不到 tipStyle"
     body = fn.group(0)
-    assert "top:" in body or "top=" in body, "tipStyle 没有垂直方向的处理"
-    assert "bottom:'auto'" in body or "bottom: 'auto'" in body, (
-        "高柱子时没有把 bottom 置为 auto，浮层仍会被向上顶出容器"
-    )
-    assert "barHeight" in body, "垂直判断没有基于柱子高度，仍会溢出"
+    assert "bottom:'100%'" not in body, "浮层又锚回柱子顶端了，高柱子会溢出"
+    assert "top:'6px'" in body or "top: '6px'" in body, "浮层没有容器内固定锚点"
+
+
+def test_tooltip_horizontal_uses_geometry_not_ratio(usage_src):
+    """横向定位不能只靠"比例阈值猜"，边界柱子会越界。
+
+    实测：按 ratio<0.28 贴左边时，浮层宽 240px，最左两根仍溢出 26~70px。
+    改成按柱子中心百分比 + translateX 贴边对齐。
+    """
+    fn = re.search(r"function tipStyle\(idx\)\{(.*?)\n  \}", usage_src, re.S)
+    body = fn.group(0)
+    assert "translateX" in body, "横向没有做贴边对齐"
+    assert "shift" in body or "-100" in body, "没有把浮层拉回容器内的逻辑"
 
 
 def test_chart_container_clips_so_tooltip_must_fit(usage_src, css):
