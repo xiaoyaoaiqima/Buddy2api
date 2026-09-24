@@ -503,10 +503,12 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .utable.cols-2 td:first-child{width:auto}
 .utable.cols-2 td:last-child{width:82px}
 /* 最近会话：标题 / 元信息 / 时间 / 数值 */
-.utable.cols-4 td:nth-child(1){width:38%}
-.utable.cols-4 td:nth-child(2){width:auto}
-.utable.cols-4 td:nth-child(3){width:88px}
+.utable.cols-4 td:nth-child(1){width:auto}
+.utable.cols-4 td:nth-child(2){width:120px}
+.utable.cols-4 td:nth-child(3){width:84px}
 .utable.cols-4 td:nth-child(4){width:74px}
+.ublock-note{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border);font-size:11px;line-height:1.7;color:var(--fg2)}
+.ublock-note b{font-weight:600;color:var(--fg)}
 .unotes{margin:0;padding:0;list-style:none}
 .unotes li{padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6;color:var(--fg2)}
 .unotes li:last-child{border-bottom:0}
@@ -1645,6 +1647,27 @@ const app=createApp({
     if(pos.length<2)return '—';
     return (Math.max(...pos)/Math.min(...pos)).toFixed(1);
   });
+  // 长尾收口：项目 12 个、模型 35 个，全列出来是噪声。改成"前 N 占多少"一句话。
+  const topProjectShare=computed(()=>{
+    const rows=d.value?.projects||[];const tot=rows.reduce((a,r)=>a+Number(r.tokens||0),0);
+    if(!tot)return 0;const top=rows.slice(0,6).reduce((a,r)=>a+Number(r.tokens||0),0);
+    return Math.round(top/tot*100);
+  });
+  // 有些"项目"其实是按时间戳命名的会话目录（2026-09-24-10-35-20），不是真实项目。
+  // 直接显示这串数字会被读成项目名，其实零信息 —— 标注出来更诚实。
+  function projectLabel(p){
+    const s=String(p||'').trim();
+    return /^\d{4}-\d{2}-\d{2}[-_]\d{2}[-_]\d{2}[-_]\d{2}$/.test(s)?'临时会话':(s||'—');
+  }
+  const avgPerCall=computed(()=>{
+    const r=Number(d.value?.summary?.requests||0);
+    return r?Number(d.value?.summary?.tokens||0)/r:0;
+  });
+  const topModel=computed(()=>{const rows=d.value?.models||[];return rows.length?rows.reduce((a,b)=>b.tokens>a.tokens?b:a):{name:'—',tokens:0}});
+  const topModelShare=computed(()=>{
+    const rows=d.value?.models||[];const tot=rows.reduce((a,r)=>a+Number(r.tokens||0),0);
+    return tot?Math.round(Number(topModel.value.tokens)/tot*100):0;
+  });
   const chartTitle=computed(()=>view.value==='tasks'?'每日新建会话':({tokens:'每日处理量',tool_tokens:'每日量 · 按工具',non_cached_input_tokens:'每日非缓存输入',output_tokens:'每日输出',tokens_per_thread:'每日每会话均值',agent_tokens:'每日量 · 主会话与子 Agent'}[metric.value]||'每日处理量'));
   const legendOf=computed(()=>{
     if(view.value==='tasks')return [['当天新建主会话','var(--blue)']];
@@ -1665,7 +1688,7 @@ const app=createApp({
   onMounted(load);
   return{d,ld,err,range,tool,provider,metric,view,selected,ranges,metrics,toolNames,toolColors,
     load,pickRange,pickTool,pickProvider,tok,n,pct,valueOf,daily,maxValue,medianValue,p90Value,
-    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,I}
+    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,topProjectShare,topModel,topModelShare,avgPerCall,projectLabel,I}
 },template:`
 <div>
   <div class="tbar utopbar">
@@ -1696,7 +1719,7 @@ const app=createApp({
       <div class="uhero-facts">
         <div class="ufact"><span class="ufact-n">{{pct(d.summary.cache_ratio)}}</span><span class="ufact-l">缓存命中：输入里被复用的比例，越高越省</span></div>
         <div class="ufact"><span class="ufact-n">{{gatewayShare}}%</span><span class="ufact-l">经网关转发：其余来自各客户端直连</span></div>
-        <div class="ufact"><span class="ufact-n">{{n(d.summary.requests)}}</span><span class="ufact-l">模型调用 · {{n(d.summary.tasks)}} 个会话 · {{n(d.summary.projects)}} 个项目</span></div>
+        <div class="ufact"><span class="ufact-n">{{n(d.summary.requests)}}</span><span class="ufact-l">模型调用次数，平均每次 {{tok(avgPerCall)}} Token</span></div>
       </div>
     </div>
 
@@ -1750,7 +1773,7 @@ const app=createApp({
         </div>
       </div>
       <div class="ublock">
-        <h3>趋势注脚</h3>
+        <h3>分布特征</h3>
         <table class="utable">
           <tbody>
             <tr><td>最高一天</td><td>{{peakDay}}</td><td class="num">{{tok(maxValue)}}</td></tr>
@@ -1765,46 +1788,27 @@ const app=createApp({
 
     <div class="usplit">
       <div class="ublock">
-        <h3>模型<span>按处理量</span></h3>
-        <table class="utable cols-2">
-          <tbody><tr v-for="m in d.models.slice(0,7)" :key="m.name">
-            <td :title="m.name">{{m.name}}</td>
-            <td class="dim">{{m.tasks?n(m.tasks)+' 个':'—'}}</td>
-            <td class="num">{{tok(m.tokens)}}</td>
-          </tr></tbody>
-        </table>
-      </div>
-      <div class="ublock">
         <h3>项目<span>{{selected?selected+' 活跃':'按工作目录'}}</span></h3>
         <table class="utable cols-2">
-          <tbody><tr v-for="x in projectRows.slice(0,7)" :key="x.name+x.cwd">
+          <tbody><tr v-for="x in projectRows.slice(0,6)" :key="x.name+x.cwd">
             <td :title="x.cwd||x.name">{{x.name}}</td>
             <td class="dim">{{x.tasks?n(x.tasks)+' 个':'—'}}</td>
             <td class="num">{{tok(x.tokens)}}</td>
           </tr></tbody>
         </table>
+        <p class="ublock-note">共 {{n(d.summary.projects)}} 个项目，前 6 个占 {{topProjectShare}}%。模型维度：最高是 <b>{{topModel.name}}</b>（{{tok(topModel.tokens)}}，占 {{topModelShare}}%）。</p>
       </div>
-    </div>
-
-    <div class="ublock" v-if="d.insights&&d.insights.length">
-      <h3>值得注意</h3>
-      <ul class="unotes">
-        <li v-for="x in d.insights" :key="x.label" :class="{warn:x.level==='warn'}">
-          <b>{{x.value}}</b> <span class="unote-label">{{x.label}}</span> — {{x.detail}}
-        </li>
-      </ul>
-    </div>
-
-    <div class="ublock">
-      <h3>最近会话<span>取处理量最高的 8 条</span></h3>
-      <table class="utable cols-4">
-        <tbody><tr v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" :class="{zero:!t.tokens}">
-          <td :title="t.title">{{t.title}}</td>
-          <td class="dim">{{t.tool}} · {{t.project}} · {{t.model}}</td>
-          <td class="dim">{{t.created_at.slice(5,16).replace('T',' ')}}</td>
-          <td class="num">{{t.tokens?tok(t.tokens):'—'}}</td>
-        </tr></tbody>
-      </table>
+      <div class="ublock">
+        <h3>最近会话<span>取处理量最高的 8 条</span></h3>
+        <table class="utable cols-4">
+          <tbody><tr v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" :class="{zero:!t.tokens}">
+            <td :title="t.title+' · '+t.project">{{t.title}}</td>
+            <td class="dim" :title="t.project">{{projectLabel(t.project)}}</td>
+            <td class="dim">{{t.created_at.slice(5,16).replace('T',' ')}}</td>
+            <td class="num">{{t.tokens?tok(t.tokens):'—'}}</td>
+          </tr></tbody>
+        </table>
+      </div>
     </div>
 
     <p class="ufootnote">{{d.methodology}} 缓存输入是输入 Token 的子集；不同模型的 Token 不应直接换算为成本。</p>

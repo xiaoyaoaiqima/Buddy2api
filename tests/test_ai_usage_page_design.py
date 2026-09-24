@@ -253,3 +253,53 @@ def test_headline_content_outweighs_the_tail(css, usage_src):
     cap = re.search(r"recentSorted\.slice\(0,(\d+)\)", usage_src)
     assert cap, "最近任务没有限制条数，会把图表比例压垮"
     assert int(cap.group(1)) <= 10, f"最近任务渲染 {cap.group(1)} 条，太多"
+
+
+# ── 减法：删掉的块不许悄悄回来 ──
+# 依据是实测的冗余度（见 commit message）：
+#   「值得注意」4 条里 2 条与别处完全重复（30/30 活跃日恒为满勤；网关 61% 已在顶部）
+#   模型表 35 个模型前 7 占 95%，长尾 28 个占 5% —— 压成一句话脚注
+# 删掉比留着好，但以后可能有人"顺手加回来"，所以钉住。
+
+def test_no_duplicate_insight_block(usage_src):
+    """「值得注意」整块已删：其中 2/4 条与别处重复，属于自我重复的噪声。"""
+    assert "unotes" not in usage_src, "「值得注意」块又被加回来了"
+    assert "d.insights" not in usage_src, "又在渲染 insights 列表"
+
+
+def test_model_list_is_summarized_not_enumerated(usage_src):
+    """模型维度收成一句话，不再列 7 行（前 7 占 95%，长尾无决策价值）。"""
+    assert "d.models.slice(0,7)" not in usage_src, "模型表又变回 7 行长表"
+    assert "topModel" in usage_src, "模型维度没有收口成摘要"
+    assert "ublock-note" in usage_src, "缺少长尾收口说明"
+
+
+def test_recent_sessions_keep_project_column(usage_src):
+    """最近会话必须保留「项目」列。
+
+    我一度把它换成「工具」——那是减过头：工具分布已由「构成」表达，
+    而"这次会话属于哪个项目"只有这里能看到。
+    """
+    recent = re.search(r"<h3>最近会话.*?</table>", usage_src, re.S)
+    assert recent, "找不到最近会话块"
+    body = recent.group(0)
+    assert "t.project" in body, "最近会话丢掉了项目列"
+    assert "t.tool" not in body, "最近会话又用工具列占位（工具已由「构成」表达）"
+
+
+def test_block_names_do_not_collide(usage_src):
+    """区块名不能和页底的口径说明撞名（都叫"注脚"读起来像同一件事）。"""
+    heads = re.findall(r"<h3>([^<]*)", usage_src)
+    assert not any("注脚" in h for h in heads), f"区块名里还有'注脚'：{heads}"
+
+
+def test_hero_facts_each_express_one_thing(usage_src):
+    """顶部每个数字只讲一件事，不在解释里再塞三组计数。"""
+    facts = re.findall(r'<div class="ufact">.*?</div>', usage_src, re.S)
+    for f in facts:
+        label = re.search(r'ufact-l">(.*?)</span>', f, re.S)
+        if not label:
+            continue
+        text = label.group(1)
+        # 解释里不该再堆多个 {{n(...)}} 计数
+        assert text.count("{{n(") <= 1, f"事实说明里塞了多个计数：{text}"
