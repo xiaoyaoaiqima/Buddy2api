@@ -411,6 +411,56 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
   .dash-hero{padding:14px}.health-kpis{grid-template-columns:repeat(3,1fr)}.metric-row{grid-template-columns:1fr}.metric{border-right:0;border-bottom:1px solid var(--border2)}.metric:last-child{border-bottom:0}
   .card-h{font-size:14px}.card-h .sub{max-width:50%;text-align:right}.searchbox{min-width:190px}.modal{max-width:calc(100vw - 20px)}
 }
+/* ── AI 用量页 ── 复用主题变量，避免第二套配色 */
+.ukpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.ukpi-label{font-size:11px;color:var(--fg3)}
+.ukpi-val{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:6px}
+.ukpi-val.ok{color:var(--green)}
+.ukpi-hint{font-size:11px;color:var(--fg3);margin-top:5px;line-height:1.5}
+.uchartctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.uchartctl-sep{width:1px;height:18px;background:var(--border);margin:0 2px}
+.uchart-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.uchart-stat{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r)}
+.uchart-stat-label{font-size:10px;color:var(--fg3)}
+.uchart-stat-value{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:4px}
+.uchart{height:190px;overflow:hidden}
+.uchart-plot{height:100%;display:flex;align-items:flex-end;gap:5px;position:relative;border-bottom:1px solid var(--border);padding-top:14px}
+.ubar-wrap{flex:1;min-width:2px;height:100%;display:flex;align-items:flex-end;position:relative;border:0;padding:0;background:transparent;cursor:pointer}
+.ubar-wrap.on .ubar{outline:2px solid var(--fg)}
+.ubar{width:100%;border-radius:2px 2px 0 0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;background:var(--blue);min-height:1px}
+.usepart{width:100%;display:block}
+.usepart-cached{background:#93b8f5}
+.usepart-fresh{background:var(--blue)}
+.usepart-out{background:#8b5cf6}
+.usepart-other{background:#c9ccd1}
+.umedian{position:absolute;left:0;right:0;border-top:1px dashed var(--green);pointer-events:none;z-index:2}
+.umedian span{position:absolute;right:4px;top:2px;font-size:10px;color:var(--green);background:var(--bg);padding:0 3px}
+.upeak{position:absolute;left:50%;width:6px;height:6px;border-radius:50%;background:var(--red);transform:translateX(-50%);z-index:3}
+.ux-axis{display:flex;justify-content:space-between;margin-top:5px;font-size:10px;color:var(--fg3);font-family:var(--mono)}
+.ugrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.urank{margin-bottom:14px}
+.urank:last-child{margin-bottom:0}
+.urank-top{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+.urank-name{font-weight:600}
+.urank-sub{font-size:10px;color:var(--fg3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.utrack{height:6px;background:var(--hover);border-radius:4px;margin-top:6px;overflow:hidden}
+.ufill{height:100%;background:var(--blue);border-radius:4px}
+.uinsights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.uinsight{padding:11px;border:1px solid var(--border);border-radius:var(--r)}
+.uinsight-label{font-size:10px;color:var(--fg3)}
+.uinsight-value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:5px}
+.uinsight-value.warn{color:var(--accent)}
+.uinsight-value.ok{color:var(--green)}
+.uinsight-detail{font-size:10px;color:var(--fg2);line-height:1.55;margin-top:6px}
+.utask{padding:11px 16px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
+.utask:last-child{border-bottom:0}
+.utask-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.utask-meta{font-size:10px;color:var(--fg3);margin-top:4px}
+.utask-token{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)}
+.ufootnote{font-size:11px;color:var(--fg3);line-height:1.7;margin:4px 0 20px}
+.uranges{display:flex;gap:4px}
+@media(max-width:900px){.ukpis{grid-template-columns:repeat(2,1fr)}.ugrid2{grid-template-columns:1fr}.uinsights{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -471,14 +521,14 @@ const api={
 function apiErr(e,fallback='加载失败'){return e.message==='401'?'管理凭证无效，请在设置页填写配置的 Admin Token。':e.message==='403'?'请求来源不被允许，请使用网关的本机地址打开。':fallback}
 const app=createApp({
   setup(){
-    const validPages=['accounts','dashboard','keys','models','logs','settings'];
+    const validPages=['accounts','dashboard','usage','keys','models','logs','settings'];
     const savedPage=localStorage.getItem('cb_gw_page');
     const page=ref(validPages.includes(savedPage)?savedPage:'accounts'),token=ref(localStorage.getItem('cb_gw_token')||''),toasts=ref([]);
     function tf(m,t='ok'){const id=Date.now()+Math.random();toasts.value=[...toasts.value,{id,m,t}].slice(-4);setTimeout(()=>toasts.value=toasts.value.filter(x=>x.id!==id),2500)}
     function go(k){page.value=k;localStorage.setItem('cb_gw_page',k)}
     function saveToken(value){token.value=value.trim();if(token.value)localStorage.setItem('cb_gw_token',token.value);else localStorage.removeItem('cb_gw_token');tf(token.value?'备用 Admin Token 已保存':'备用 Admin Token 已清除')}
     function hardRefresh(){window.location.reload()}
-    const nav=[{k:'accounts',l:'账号管理',i:I.users},{k:'dashboard',l:'Dashboard',i:I.dash},{k:'keys',l:'API Keys',i:I.key},{k:'models',l:'模型配置',i:I.cpu},{k:'logs',l:'请求日志',i:I.log},{k:'settings',l:'设置',i:I.gear}];
+    const nav=[{k:'accounts',l:'账号管理',i:I.users},{k:'dashboard',l:'Dashboard',i:I.dash},{k:'usage',l:'AI 用量',i:I.dash},{k:'keys',l:'API Keys',i:I.key},{k:'models',l:'模型配置',i:I.cpu},{k:'logs',l:'请求日志',i:I.log},{k:'settings',l:'设置',i:I.gear}];
     return{page,token,toasts,tf,go,saveToken,hardRefresh,nav,I}
   },
   template:`
@@ -493,6 +543,7 @@ const app=createApp({
     <div class="main">
       <div class="content" v-if="page==='accounts'"><accs :token="token" :toast="tf"/></div>
       <div class="content" v-if="page==='dashboard'"><dash :token="token" :toast="tf"/></div>
+      <div class="content" v-if="page==='usage'"><usage :token="token" :toast="tf"/></div>
       <div class="content" v-if="page==='keys'"><keys :token="token" :toast="tf"/></div>
       <div class="content" v-if="page==='models'"><mdls :token="token" :toast="tf"/></div>
       <div class="content" v-if="page==='logs'"><lgs :token="token"/></div>
@@ -1449,6 +1500,193 @@ const app=createApp({
   </tbody></table><div class="pager"><button class="btn s" @click="prev" :disabled="f.offset<=0||ld">上一页</button><span class="tag">{{pageText}}</span><button class="btn s" @click="next" :disabled="Number(f.offset)+Number(f.limit)>=Number(meta.total)||ld">下一页</button></div></div>
   <div class="card card-p empty" v-else><div class="em">📋</div><p>暂无记录</p></div>
 </div>`
+}).component('usage',{props:['token','toast'],setup(p){
+  const d=ref(null),ld=ref(true),err=ref(''),range=ref('30'),tool=ref('all'),provider=ref('all');
+  const metric=ref('tokens'),view=ref('tokens'),selected=ref('');
+  const ranges=[['7','近 7 日'],['30','近 30 日'],['90','近 90 日'],['all','全部']];
+  const metrics=[['tokens','总 Token'],['tool_tokens','按工具拆分'],['non_cached_input_tokens','非缓存输入'],['output_tokens','输出 Token'],['tokens_per_thread','平均每会话'],['agent_tokens','主会话 vs 子 Agent']];
+  const toolNames={codex:'Codex',claude:'Claude Code',zcode:'ZCode',workbuddy:'WorkBuddy',gateway:'网关直连'};
+  const toolColors={codex:'#2563eb',claude:'#8b5cf6',zcode:'#f59e0b',workbuddy:'#10b981',gateway:'#0ea5e9'};
+  async function load(){
+    ld.value=true;err.value='';
+    try{
+      const qs=new URLSearchParams({range:range.value,tool:tool.value,provider:provider.value});
+      d.value=await api.get('/admin/ai-usage/overview?'+qs,p.token);
+      selected.value='';
+    }catch(e){err.value=apiErr(e,'加载失败');d.value=null}
+    ld.value=false;
+  }
+  function pickRange(r){range.value=r;load()}
+  function pickTool(t){tool.value=t;provider.value='all';load()}
+  function pickProvider(ev){provider.value=ev.target.value;load()}
+  function tok(v){v=Number(v||0);if(v>=1e9)return (v/1e9).toFixed(v>=1e10?1:2).replace(/\.?0+$/,'')+'B';if(v>=1e6)return (v/1e6).toFixed(v>=1e7?1:2).replace(/\.?0+$/,'')+'M';if(v>=1e3)return (v/1e3).toFixed(1)+'K';return v.toLocaleString()}
+  function n(v){return Number(v||0).toLocaleString()}
+  function pct(v){return (Number(v||0)*100).toFixed(1)+'%'}
+  // 每根柱子的取值：看会话数时用 tasks，其余按所选度量
+  function valueOf(row){if(view.value==='tasks')return Number(row.tasks||0);if(['agent_tokens','tool_tokens'].includes(metric.value))return Number(row.tokens||0);return Number(row[metric.value]||0)}
+  const daily=computed(()=>d.value?.daily||[]);
+  const maxValue=computed(()=>Math.max(...daily.value.map(valueOf),1));
+  // P90 作为"高峰门槛"、中位数作为"典型水平"：比均值更能反映真实的日常强度
+  function medianOf(values){const s=values.filter(v=>v>0).sort((a,b)=>a-b);if(!s.length)return 0;const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2}
+  function p90Of(values){const s=values.filter(v=>v>0).sort((a,b)=>a-b);if(!s.length)return 0;const i=(s.length-1)*0.9,lo=Math.floor(i),hi=Math.ceil(i);return s[lo]+(s[hi]-s[lo])*(i-lo)}
+  const values=computed(()=>daily.value.map(valueOf));
+  const medianValue=computed(()=>medianOf(values.value));
+  const p90Value=computed(()=>p90Of(values.value));
+  function barHeight(row){return valueOf(row)/maxValue.value*100}
+  function isPeak(row){return p90Value.value>0&&valueOf(row)>p90Value.value}
+  // 柱内分层只对「总 Token」有意义：其它度量本身就是某个子集
+  function segments(row){
+    if(view.value!=='tokens'||metric.value!=='tokens'||!row.tokens)return null;
+    const t=row.tokens,part=v=>Math.max(0,Number(v||0))/t*100;
+    return [{c:'usepart-cached',w:part(row.cached_input_tokens),t:'缓存输入'},{c:'usepart-fresh',w:part(row.non_cached_input_tokens),t:'非缓存输入'},{c:'usepart-out',w:part(row.output_tokens),t:'输出'},{c:'usepart-other',w:part(row.unclassified_tokens),t:'其他'}].filter(x=>x.w>0);
+  }
+  function toolSegments(row){
+    if(view.value!=='tokens'||metric.value!=='tool_tokens'||!row.tokens)return null;
+    return Object.entries(row.tool_tokens||{}).filter(([,v])=>v>0).map(([k,v])=>({c:'',w:Number(v)/row.tokens*100,t:toolNames[k]||k,color:toolColors[k]||'#8b5cf6'}));
+  }
+  function agentSegments(row){
+    if(view.value!=='tokens'||metric.value!=='agent_tokens'||!row.tokens)return null;
+    const part=v=>Math.max(0,Number(v||0))/row.tokens*100;
+    return [{c:'',w:part(row.root_tokens),t:'主会话',color:'#2563eb'},{c:'',w:part(row.subagent_tokens),t:'子 Agent',color:'#8b5cf6'}].filter(x=>x.w>0);
+  }
+  function rowSegments(row){return segments(row)||toolSegments(row)||agentSegments(row)}
+  function pickDay(row){selected.value=selected.value===row.date?'':row.date}
+  // 悬浮提示尽量把当天各口径列全：柱高只表达一个度量，其余细节放这里，
+  // 否则"看 Token"和"看非缓存输入"两种视图下用户拿不到别的数字。
+  function tipFor(row){
+    const t=k=>tok(row[k]);
+    const lines=[row.date+' · '+n(row.tasks)+' 个新建主会话',
+      '总 Token：'+t('tokens'),
+      '缓存输入：'+t('cached_input_tokens')+'（'+pct(row.cache_ratio)+'）',
+      '非缓存输入：'+t('non_cached_input_tokens'),
+      '输出：'+t('output_tokens'),
+      '主会话 / 子 Agent：'+t('root_tokens')+' / '+t('subagent_tokens'),
+      '活跃会话：'+n(row.involved_threads)];
+    if(row.tool_tokens){const parts=Object.entries(row.tool_tokens).filter(([,v])=>v>0).map(([k,v])=>(toolNames[k]||k)+' '+tok(v));if(parts.length)lines.push(parts.join(' · '))}
+    if(isPeak(row))lines.push('高峰：超过当前范围 P90');
+    return lines.join('\n');
+  }
+  const projectRows=computed(()=>{
+    const list=d.value?.projects||[];
+    if(selected.value&&d.value?.project_daily?.[selected.value])return d.value.project_daily[selected.value];
+    return list;
+  });
+  function rankMax(rows,key){return Math.max(...rows.map(r=>Number(r[key]||0)),1)}
+  function dayLabel(s){return s?s.slice(5):''}
+  onMounted(load);
+  return{d,ld,err,range,tool,provider,metric,view,selected,ranges,metrics,toolNames,toolColors,
+    load,pickRange,pickTool,pickProvider,tok,n,pct,valueOf,daily,maxValue,medianValue,p90Value,
+    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipFor,I}
+},template:`
+<div>
+  <div class="phead"><h1>AI 用量</h1><p>本机各 AI 工具的使用轨迹 · 只读扫描，不上传内容</p></div>
+  <div class="tbar">
+    <div class="uranges"><button class="btn s" v-for="r in ranges" :key="r[0]" :class="{pri:range===r[0]}" @click="pickRange(r[0])">{{r[1]}}</button></div>
+    <select class="selectctl" :value="tool" @change="pickTool($event.target.value)">
+      <option value="all">全部工具</option>
+      <option v-for="(label,key) in toolNames" :key="key" :value="key">{{label}}</option>
+    </select>
+    <select class="selectctl" v-if="d&&d.providers&&d.providers.length" :value="provider" @change="pickProvider">
+      <option value="all">全部 Provider</option>
+      <option v-for="x in d.providers" :key="x.name" :value="x.name">{{x.name}}</option>
+    </select>
+    <button class="btn s" @click="load" :disabled="ld"><span v-html="I.refresh"></span>{{ld?'扫描中':'刷新'}}</button>
+    <div class="spacer"></div>
+    <span class="tag" v-if="d&&d.range_label">{{d.range_label}} · {{d.tool_label}}</span>
+  </div>
+  <div v-if="ld" class="load"><div class="spin"></div><p class="hint">正在扫描本机轨迹…首次扫描较慢（可能 10-30 秒），之后走缓存</p></div>
+  <div v-else-if="err" class="card card-p empty"><div class="em">⚠️</div><p>{{err}}</p><button class="btn s" @click="load">重试</button></div>
+  <template v-else-if="d">
+    <div class="ukpis">
+      <div class="card"><div class="ukpi-label">主会话</div><div class="ukpi-val">{{n(d.summary.tasks)}}</div><div class="ukpi-hint">{{n(d.summary.subagent_tasks)}} 个子 Agent 会话另计</div></div>
+      <div class="card"><div class="ukpi-label">AI 处理量</div><div class="ukpi-val ok">{{tok(d.summary.tokens)}}</div><div class="ukpi-hint">{{n(d.summary.involved_threads)}} 个会话有消耗 · 缓存占比 {{pct(d.summary.cache_ratio)}}</div></div>
+      <div class="card"><div class="ukpi-label">活跃天数</div><div class="ukpi-val">{{n(d.summary.active_days)}}</div><div class="ukpi-hint">按事件发生日</div></div>
+      <div class="card"><div class="ukpi-label">涉及项目</div><div class="ukpi-val">{{n(d.summary.projects)}}</div><div class="ukpi-hint">按工作目录去重</div></div>
+      <div class="card"><div class="ukpi-label">模型调用</div><div class="ukpi-val">{{n(d.summary.requests)}}</div><div class="ukpi-hint">{{n(d.summary.tool_calls)}} 次工具调用 · {{n(d.summary.errors)}} 次错误</div></div>
+    </div>
+    <div class="card">
+      <div class="card-h">每日用量<span class="sub">{{d.summary.first_date}} 至 {{d.summary.last_date}}</span></div>
+      <div class="card-p">
+        <div class="uchartctl">
+          <button class="btn s" :class="{pri:view==='tokens'}" @click="view='tokens'">看 Token</button>
+          <button class="btn s" :class="{pri:view==='tasks'}" @click="view='tasks'">看会话数</button>
+          <span v-if="view==='tokens'" class="uchartctl-sep"></span>
+          <button v-for="m in metrics" :key="m[0]" v-if="view==='tokens'" class="btn s" :class="{pri:metric===m[0]}" @click="metric=m[0]">{{m[1]}}</button>
+        </div>
+        <div class="uchart-stats">
+          <div class="uchart-stat"><div class="uchart-stat-label">最高一天</div><div class="uchart-stat-value">{{tok(maxValue)}}</div></div>
+          <div class="uchart-stat"><div class="uchart-stat-label">典型活跃日</div><div class="uchart-stat-value">{{tok(medianValue)}}</div></div>
+          <div class="uchart-stat"><div class="uchart-stat-label">高峰门槛 P90</div><div class="uchart-stat-value">{{tok(p90Value)}}</div></div>
+        </div>
+        <div class="uchart">
+          <div class="uchart-plot">
+            <div class="umedian" v-if="medianValue" :style="{bottom:medianValue/maxValue*100+'%'}"><span>典型 {{tok(medianValue)}}</span></div>
+            <button v-for="row in daily" :key="row.date" class="ubar-wrap" :class="{on:selected===row.date}" @click="pickDay(row)" :title="tipFor(row)">
+              <span class="upeak" v-if="isPeak(row)"></span>
+              <span class="ubar" :style="{height:barHeight(row)+'%'}">
+                <span v-for="(s,i) in (rowSegments(row)||[])" :key="i" class="usepart" :class="s.c" :style="{height:s.w+'%',background:s.color||''}"></span>
+              </span>
+            </button>
+          </div>
+        </div>
+        <div class="ux-axis"><span>{{dayLabel(d.summary.first_date)}}</span><span>{{dayLabel(d.summary.last_date)}}</span></div>
+      </div>
+    </div>
+    <div class="ugrid2">
+      <div class="card">
+        <div class="card-h">工具分布<span class="sub">本机可验证数据</span></div>
+        <div class="card-p">
+          <div v-for="t in d.tools" :key="t.key" class="urank">
+            <div class="urank-top"><div><div class="urank-name">{{t.name}}</div><div class="urank-sub">{{t.data_quality}}</div></div><span>{{n(t.tasks)}} 个主会话 · {{tok(t.tokens)}}</span></div>
+            <div class="utrack"><div class="ufill" :style="{width:(t.tokens/rankMax(d.tools,'tokens')*100)+'%',background:toolColors[t.key]||'#8b5cf6'}"></div></div>
+          </div>
+          <div class="empty" v-if="!d.tools.length">暂无数据</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h">项目分布<span class="sub">{{selected?selected+' 活跃项目':'按当前范围工作目录'}}</span></div>
+        <div class="card-p">
+          <div v-for="x in projectRows.slice(0,10)" :key="x.name" class="urank">
+            <div class="urank-top"><div><div class="urank-name">{{x.name}}</div><div class="urank-sub" v-if="x.cwd">{{x.cwd}}</div></div><span>{{n(x.tasks)}} 个 · {{tok(x.tokens)}}</span></div>
+            <div class="utrack"><div class="ufill" :style="{width:(x.tokens/rankMax(projectRows,'tokens')*100)+'%'}"></div></div>
+          </div>
+          <div class="empty" v-if="!projectRows.length">暂无数据</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h">模型分布<span class="sub">根任务</span></div>
+      <div class="card-p">
+        <div v-for="m in d.models.slice(0,10)" :key="m.name" class="urank">
+          <div class="urank-top"><div class="urank-name">{{m.name}}</div><span>{{n(m.tasks)}} 个 · {{tok(m.tokens)}}</span></div>
+          <div class="utrack"><div class="ufill" :style="{width:(m.tokens/rankMax(d.models,'tokens')*100)+'%'}"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" v-if="d.insights&&d.insights.length">
+      <div class="card-h">使用习惯诊断<span class="sub">从轨迹识别可改善模式</span></div>
+      <div class="card-p"><div class="uinsights">
+        <div v-for="x in d.insights" :key="x.label" class="uinsight">
+          <div class="uinsight-label">{{x.label}}</div>
+          <div class="uinsight-value" :class="{warn:x.level==='warn',ok:x.level==='ok'}">{{x.value}}</div>
+          <div class="uinsight-detail">{{x.detail}}</div>
+        </div>
+      </div></div>
+    </div>
+    <div class="card">
+      <div class="card-h">最近任务<span class="sub">最多 20 条</span></div>
+      <div class="card-p" style="padding:0">
+        <div v-for="t in d.recent_tasks" :key="t.title+t.created_at" class="utask">
+          <div><div class="utask-title">{{t.title}}</div><div class="utask-meta">{{t.tool}} · {{t.project}} · {{t.model}} · {{t.created_at.replace('T',' ')}}</div></div>
+          <div class="utask-token">{{tok(t.tokens)}}</div>
+        </div>
+        <div class="empty" v-if="!d.recent_tasks.length">暂无会话</div>
+      </div>
+    </div>
+    <p class="ufootnote">{{d.methodology}} 缓存输入是输入 Token 的子集；不同模型的 Token 不应直接换算为成本。</p>
+  </template>
+</div>`
+
 }).component('stgs',{props:['token','toast','saveToken'],setup(p){
   const defaults={backend_url:'https://copilot.tencent.com',default_domain:'www.codebuddy.cn',timeout:300,auth_failure_threshold:3,base_url:'http://127.0.0.1:8787/v1',admin_auth:localMode?'本机自动授权':'Admin Token',data_file:'codebuddy_gateway.db'};
   const s=ref({...defaults}),stats=ref(null),ld=ref(true),saving=ref(false),copied=ref(''),setupTab=ref('codex'),adminToken=ref(p.token||'');

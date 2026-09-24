@@ -30,6 +30,7 @@ import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
+from contextlib import asynccontextmanager
 from starlette.concurrency import run_in_threadpool
 
 import buddy2api.database as db
@@ -41,6 +42,7 @@ import buddy2api.providers as providers
 import buddy2api.router as router
 import buddy2api.control_plane as control_plane
 import buddy2api.seamless_login as seamless_login
+from buddy2api.ai_usage import service as ai_usage_service
 from buddy2api.paths import PROJECT_ROOT
 from buddy2api.providers.protocol import KNOWN_CHANNEL_SET
 from buddy2api.providers.qclaw.store import default_guid, upsert_account as upsert_qclaw_account
@@ -105,7 +107,16 @@ def _configure_outbound_proxy() -> str:
     return "direct (CB_GATEWAY_UPSTREAM_PROXY 可指定代理)"
 
 
-app = FastAPI(title="Buddy 2 API", version=VERSION)
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # 后台预热 AI 用量统计：冷扫描要 ~25s，预热后第一个打开页面的人不用等。
+    # 必须放在 lifespan 而不是 main()：main() 是同步代码，那时还没有事件循环。
+    if os.environ.get("CB_GATEWAY_AI_USAGE_PREWARM", "1") != "0":
+        ai_usage_service.start_prewarm()
+    yield
+
+
+app = FastAPI(title="Buddy 2 API", version=VERSION, lifespan=_lifespan)
 _CORS_ORIGINS = _cors_origins()
 
 app.add_middleware(
@@ -991,6 +1002,33 @@ async def admin_checkin_status(
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     return await auth_manager.fetch_checkin_status(account, force=bool(force))
+
+
+@app.get("/admin/ai-usage/overview")
+async def admin_ai_usage_overview(
+    range: str = "30",
+    provider: str = "all",
+    tool: str = "all",
+    authorization: str | None = Header(default=None),
+):
+    """AI 工具使用轨迹统计。
+
+    扫描本机各客户端的轨迹库，冷启动约 25s（之后走缓存 ~0.03s），所以：
+    - 在线程池里执行，不阻塞事件循环（否则这 25s 内所有转发请求都会停摆）；
+    - 同一时刻只允许一次扫描（连点刷新不会触发 N 次全盘扫描）；
+    - 冷启动时返回 warming=true + scan_seconds，前端据此提示"正在扫描"。
+    """
+    _check_admin(authorization)
+    try:
+        return await ai_usage_service.overview(range_key=range, provider=provider, tool=tool)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/admin/ai-usage/status")
+async def admin_ai_usage_status(authorization: str | None = Header(default=None)):
+    _check_admin(authorization)
+    return ai_usage_service.status()
 
 
 @app.get("/admin/accounts/checkin-status-all")
