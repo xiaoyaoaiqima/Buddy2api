@@ -472,7 +472,7 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .umedian span{position:absolute;right:4px;top:2px;font-size:11px;color:var(--green);background:var(--bg);padding:0 3px}
 .upeak{position:absolute;left:50%;width:6px;height:6px;border-radius:50%;background:var(--red);transform:translateX(-50%);z-index:3}
 .ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:11px;color:var(--fg2);font-family:var(--mono)}
-.utip{position:absolute;bottom:100%;z-index:6;min-width:190px;padding:9px 11px;margin-bottom:6px;background:#1f2430;color:#f2f4f8;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.26);font-size:11px;line-height:1.5;pointer-events:none;text-align:left;transform:translateX(-50%)}
+.utip{position:absolute;bottom:100%;z-index:6;min-width:170px;max-width:240px;padding:9px 11px;margin-bottom:6px;background:#1f2430;color:#f2f4f8;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.26);font-size:11px;line-height:1.5;pointer-events:none;text-align:left;transform:translateX(-50%)}
 .utip b{display:block;font-family:var(--mono);font-size:11px;margin-bottom:5px;color:#fff}
 .utip-row{display:flex;justify-content:space-between;gap:14px;white-space:nowrap}
 .utip-row em{font-style:normal;color:#a9b1c0}
@@ -1626,8 +1626,20 @@ const app=createApp({
     if(row.tool_tokens){const parts=Object.entries(row.tool_tokens).filter(([,v])=>v>0).map(([k,v])=>(toolNames[k]||k)+' '+tok(v));if(parts.length)rows.push(['按工具',parts.join(' · ')])}
     return rows;
   }
-  // 贴边的日子要把浮层翻向内侧，否则会被 .uchart 的 overflow 裁掉
-  function tipStyle(idx){const total=daily.value.length||1;const ratio=total>1?idx/(total-1):0.5;return ratio>0.72?{right:'2px'}:ratio<0.28?{left:'2px'}:{left:'50%'}}
+  // 浮层定位：水平与垂直都要避让，否则会被 .uchart 的 overflow:hidden 裁掉。
+  // 曾经只处理了左右：高柱子的浮层向上顶出容器，被裁成一条黑线（用户直接问
+  // "上面这条黑色的线是啥意思"）。垂直方向不能再靠 bottom:100%，因为浮层高于
+  // 柱子顶端到容器顶部的空间时必然溢出——改成按柱子高度切换"放在柱子上方"或
+  // "放在柱子内部靠上"，并给出高度阈值。
+  function tipStyle(idx){
+    const total=daily.value.length||1;
+    const ratio=total>1?idx/(total-1):0.5;
+    const horiz=ratio>0.72?{right:'2px'}:ratio<0.28?{left:'2px'}:{left:'50%'};
+    const row=daily.value[idx];
+    // 柱子占到容器高度约 62% 以上时，上方已放不下浮层，改为贴在柱子内部顶端
+    const tall=row?barHeight(row)>62:false;
+    return tall?{...horiz,top:'8px',bottom:'auto'}:{...horiz,bottom:'100%'};
+  }
   // y 轴刻度：0 到当前最大值切 4 段，给柱高一个可读参照
   const yTicks=computed(()=>{const m=maxValue.value;return [1,0.5,0].map(f=>({v:f*m,pct:f*100}))})
   // 图例必须跟着当前度量走：堆叠图里颜色是有含义的，不给说明就是噪声；

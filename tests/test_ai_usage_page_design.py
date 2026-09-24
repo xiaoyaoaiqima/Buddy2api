@@ -303,3 +303,38 @@ def test_hero_facts_each_express_one_thing(usage_src):
         text = label.group(1)
         # 解释里不该再堆多个 {{n(...)}} 计数
         assert text.count("{{n(") <= 1, f"事实说明里塞了多个计数：{text}"
+
+
+# ── 浮层不能被容器裁掉 ──
+# 用户实际反馈："上面这条黑色的线是啥意思" —— 那就是浮层被裁剩的一条边。
+# 病根：浮层固定 bottom:100%（贴柱子顶端向上），高柱子会把浮层顶出 .uchart 的
+# 可视区，而 .uchart 是 overflow:hidden。tipStyle 当时只做了左右翻转，漏了上下。
+
+def test_tooltip_avoids_vertical_clipping(usage_src):
+    """浮层必须处理垂直避让，不能只靠 bottom:100%。
+
+    高柱子上方放不下时，要改为贴在柱子内部顶端，否则被 overflow:hidden 裁成黑线。
+    """
+    fn = re.search(r"function tipStyle\(idx\)\{(.*?)\n  \}", usage_src, re.S)
+    assert fn, "找不到 tipStyle"
+    body = fn.group(0)
+    assert "top:" in body or "top=" in body, "tipStyle 没有垂直方向的处理"
+    assert "bottom:'auto'" in body or "bottom: 'auto'" in body, (
+        "高柱子时没有把 bottom 置为 auto，浮层仍会被向上顶出容器"
+    )
+    assert "barHeight" in body, "垂直判断没有基于柱子高度，仍会溢出"
+
+
+def test_chart_container_clips_so_tooltip_must_fit(usage_src, css):
+    """确认前提：.uchart 是 overflow:hidden —— 所以浮层溢出必然被裁。"""
+    m = re.search(r"\.uchart\{([^}]*)\}", css)
+    assert m and "overflow:hidden" in m.group(1), (
+        ".uchart 不再是 overflow:hidden；若改成 visible，浮层的垂直避让策略需重新评估"
+    )
+
+
+def test_tooltip_width_is_bounded(css):
+    """浮层要有最大宽度，否则长内容会横穿整张图。"""
+    m = re.search(r"\.utip\{([^}]*)\}", css)
+    assert m, "找不到 .utip"
+    assert "max-width" in m.group(1), "浮层没有最大宽度限制"
