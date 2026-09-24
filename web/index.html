@@ -1637,7 +1637,7 @@ const app=createApp({
         <div class="card-h">工具分布<span class="sub">本机可验证数据</span></div>
         <div class="card-p">
           <div v-for="t in d.tools" :key="t.key" class="urank">
-            <div class="urank-top"><div><div class="urank-name">{{t.name}}</div><div class="urank-sub">{{t.data_quality}}</div></div><span>{{n(t.tasks)}} 个主会话 · {{tok(t.tokens)}}</span></div>
+            <div class="urank-top"><div><div class="urank-name">{{t.name}}</div><div class="urank-sub">{{t.data_quality}}</div></div><span>{{t.tasks?n(t.tasks)+' 个主会话 · ':''}}{{tok(t.tokens)}}</span></div>
             <div class="utrack"><div class="ufill" :style="{width:(t.tokens/rankMax(d.tools,'tokens')*100)+'%',background:toolColors[t.key]||'#8b5cf6'}"></div></div>
           </div>
           <div class="empty" v-if="!d.tools.length">暂无数据</div>
@@ -1647,7 +1647,7 @@ const app=createApp({
         <div class="card-h">项目分布<span class="sub">{{selected?selected+' 活跃项目':'按当前范围工作目录'}}</span></div>
         <div class="card-p">
           <div v-for="x in projectRows.slice(0,10)" :key="x.name" class="urank">
-            <div class="urank-top"><div><div class="urank-name">{{x.name}}</div><div class="urank-sub" v-if="x.cwd">{{x.cwd}}</div></div><span>{{n(x.tasks)}} 个 · {{tok(x.tokens)}}</span></div>
+            <div class="urank-top"><div><div class="urank-name">{{x.name}}</div><div class="urank-sub" v-if="x.cwd">{{x.cwd}}</div></div><span>{{x.tasks?n(x.tasks)+' 个 · ':''}}{{tok(x.tokens)}}</span></div>
             <div class="utrack"><div class="ufill" :style="{width:(x.tokens/rankMax(projectRows,'tokens')*100)+'%'}"></div></div>
           </div>
           <div class="empty" v-if="!projectRows.length">暂无数据</div>
@@ -1658,7 +1658,7 @@ const app=createApp({
       <div class="card-h">模型分布<span class="sub">根任务</span></div>
       <div class="card-p">
         <div v-for="m in d.models.slice(0,10)" :key="m.name" class="urank">
-          <div class="urank-top"><div class="urank-name">{{m.name}}</div><span>{{n(m.tasks)}} 个 · {{tok(m.tokens)}}</span></div>
+          <div class="urank-top"><div class="urank-name">{{m.name}}</div><span>{{m.tasks?n(m.tasks)+' 个 · ':''}}{{tok(m.tokens)}}</span></div>
           <div class="utrack"><div class="ufill" :style="{width:(m.tokens/rankMax(d.models,'tokens')*100)+'%'}"></div></div>
         </div>
       </div>
