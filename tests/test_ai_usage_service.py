@@ -148,3 +148,72 @@ def test_gateway_db_defaults_track_database_path(monkeypatch, tmp_path):
     target = tmp_path / "custom.db"
     monkeypatch.setenv("CB_GATEWAY_DB_PATH", str(target))
     assert collectors.default_gateway_db() == target
+
+
+# ── 路由层 ──
+# 移植自 zhiji 的 test_codex_usage_page_and_api：那条测的是 Flask 的
+# /codex-usage + /api/codex-usage/overview，这里对应 buddy2api 的
+# /admin/ai-usage/overview，顺带把鉴权也一起钉住。
+
+@pytest.fixture
+def _local_admin(monkeypatch):
+    """把网关切到本机管理模式，路由才不需要 Admin Token。"""
+    import buddy2api.server as server
+
+    monkeypatch.setattr(server, "LOCAL_MODE", True)
+    monkeypatch.setattr(server, "ALLOW_NO_ADMIN_AUTH", False)
+    yield
+
+
+def _route_request(path):
+    import asyncio
+
+    import httpx
+
+    import buddy2api.server as server
+
+    async def run():
+        transport = httpx.ASGITransport(app=server.app, client=("127.0.0.1", 12345))
+        async with httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1:8787") as client:
+            return await client.get(path)
+
+    return asyncio.run(run())
+
+
+def test_overview_route_requires_admin(_local_admin):
+    """鉴权不能因为新增页面就漏掉：这是管理接口，会读出本机全部用量。"""
+    import buddy2api.server as server
+
+    server.LOCAL_MODE = False
+    assert _route_request("/admin/ai-usage/overview").status_code == 401
+
+
+def test_overview_route_passes_through_params(monkeypatch, _local_admin):
+    seen = {}
+
+    def fake(*args, **kwargs):
+        # service 按位置调用 _scan(range_key, provider, tool)
+        seen.update(zip(("range_key", "provider", "tool"), args))
+        seen.update(kwargs)
+        return _fake_stats(*args, **kwargs)
+
+    monkeypatch.setattr(service, "_scan", fake)
+    resp = _route_request("/admin/ai-usage/overview?range=7&tool=codex&provider=OpenAI")
+    assert resp.status_code == 200
+    assert resp.json()["summary"]["tasks"] == 1
+    assert seen["range_key"] == "7", seen
+    assert seen["tool"] == "codex", seen
+    assert seen["provider"] == "OpenAI", seen
+
+
+def test_overview_route_rejects_bad_range(monkeypatch, _local_admin):
+    monkeypatch.setattr(service, "_scan", _fake_stats)
+    resp = _route_request("/admin/ai-usage/overview?range=999")
+    assert resp.status_code == 400
+
+
+def test_status_route_reports_scan_count(monkeypatch, _local_admin):
+    monkeypatch.setattr(service, "_scan", _fake_stats)
+    resp = _route_request("/admin/ai-usage/status")
+    assert resp.status_code == 200
+    assert resp.json()["has_result"] is False
