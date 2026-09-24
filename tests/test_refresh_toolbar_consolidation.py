@@ -6,11 +6,13 @@
 而且「刷新官方额度」调 `refreshAllResources()`（force=false），与 `load(true)` 的
 第三步发的是**完全相同的请求**，点哪个都一样。
 
-合并成一个「刷新」后，唯一会丢失的能力是「绕过签到状态的 5 分钟服务端缓存」
-（fetch_checkin_status 的 max_age_seconds=300）。这是真需求，所以保留成第二个
-「强制刷新」按钮，而不是直接删掉。
+**而且连「强制刷新」都不需要**：签到缓存是当天维度的（checkin_date + today_only），
+签到本身又是每天一次的动作，所以"状态变了但缓存旧"的窗口只剩「你在网页外刚领完」
+这一种，5 分钟自愈。真正需要强制重读的两处（claimOne / claimAll）内部本来就调
+loadCheckins(true)，不依赖按钮。所以最终只留一个「刷新」。
 
-这里钉死：三个按钮没了、两个新按钮在、以及 force 真的透传到了下游。
+这里钉死：三个旧按钮没了、只剩一个「刷新」、它就是全量刷新（列表+领取状态+官方额度），
+且领取后仍会强制重读签到状态。
 """
 
 import re
@@ -47,35 +49,38 @@ def test_single_refresh_button_does_everything(account_toolbar):
     assert ">刷新<" in account_toolbar.replace("'刷新中':'刷新'", ">刷新<") or "'刷新'" in account_toolbar
 
 
-def test_force_refresh_button_preserved(account_toolbar):
-    """必须保留一个能绕过签到缓存的入口，否则最多会看到 5 分钟前的旧状态。"""
-    assert "强制刷新" in account_toolbar, "删掉了「强制刷新」，失去了绕过签到缓存的能力"
-    assert '@click="load(true,true)"' in account_toolbar, "「强制刷新」没有传 force=true"
-
-
-def test_load_accepts_and_forwards_force(html_source):
-    """load(withOfficial, force) 必须把 force 透传给 loadCheckins 和 refreshAllResources。"""
-    m = re.search(r"async function load\(withOfficial=false(.*?)\n", html_source)
-    assert m, "load 的签名变了"
-    sig = m.group(0)
-    assert "force=false" in sig, "load 没有接收 force 参数"
-    assert "loadCheckins(force)" in sig, "load 没有把 force 传给 loadCheckins"
-    assert "refreshAllResources(true,force)" in sig, "load 没有把 force 传给 refreshAllResources"
-
-
-def test_refreshAllResources_forwards_force(html_source):
-    m = re.search(r"async function refreshAllResources\(silent=false,force=false\)\{(.*?)\n", html_source)
-    assert m, "refreshAllResources 的签名变了"
-    assert "refreshResource(a,true,force)" in m.group(0), (
-        "refreshAllResources 没有把 force 透传给 refreshResource"
+def test_only_one_refresh_button_remains(account_toolbar):
+    """工具栏里只该有一个刷新按钮——多一个都是让用户犹豫的设计。"""
+    refresh_btns = re.findall(r'<button[^>]*>(?:(?!</button>).)*?刷新(?:(?!</button>).)*?</button>', account_toolbar)
+    assert len(refresh_btns) == 1, (
+        f"工具栏里有 {len(refresh_btns)} 个刷新按钮，应该只剩 1 个：{[re.sub(chr(60) + '[^>]+' + chr(62), '', b) for b in refresh_btns]}"
     )
+    assert "强制刷新" not in account_toolbar, "「强制刷新」又回来了"
 
 
-def test_buttons_have_titles_explaining_the_difference(account_toolbar):
-    """两个刷新按钮的区别（是否忽略缓存）必须写出来，否则用户不知道点哪个。"""
+def test_load_no_longer_takes_force(html_source):
+    """load 回到单参数：没有调用方需要绕过缓存了，留着参数=留着一个没人用的旋钮。"""
+    m = re.search(r"async function load\(withOfficial=false[^)]*\)", html_source)
+    assert m, "load 的签名变了"
+    assert "force" not in m.group(0), f"load 还带着没人用的 force 参数：{m.group(0)}"
+
+
+def test_claim_still_forces_checkin_reread(html_source):
+    """领完必须强制重读签到状态，这条能力不能因为删按钮而丢掉。"""
+    for fn in ("claimOne", "claimAll"):
+        # 这两个函数整体写在一行，不能用 \n 收尾。
+        i = html_source.find(f"async function {fn}(")
+        assert i > 0, f"找不到 {fn}"
+        body = html_source[i : html_source.find("\n", i)]
+        assert "loadCheckins(true)" in body, (
+            f"{fn} 领完之后没有强制重读签到状态，会显示旧的「可领取」"
+        )
+
+
+def test_refresh_button_has_title(account_toolbar):
+    """一个按钮也要说清它刷了什么，否则用户不知道「刷新」的范围。"""
     assert "title=" in account_toolbar
-    assert account_toolbar.count("title=") >= 2, "两个刷新按钮都应给出 title 说明"
-    assert "缓存" in account_toolbar, "title 里应说明缓存差异"
+    assert "官方额度" in account_toolbar and "领取" in account_toolbar
 
 
 def test_claim_and_seamless_buttons_untouched(account_toolbar):
