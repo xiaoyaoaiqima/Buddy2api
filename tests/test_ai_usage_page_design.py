@@ -122,3 +122,97 @@ def test_recent_tasks_prioritize_nonzero_tokens(usage_src):
     """最近任务里近一半是 0 Token 的会话，按时间混排会把有信息量的挤下去。"""
     assert "recentSorted" in usage_src, "最近任务没有做排序"
     assert "utask.zero" in usage_src or "zero:!t.tokens" in usage_src, "0 Token 行没有弱化"
+
+
+# ── 可读性：对比度与字号 ──
+# 这两条来自一次真实审计：整页小字用了 --fg3(#999)，在白底上只有 2.85:1，
+# 低于 WCAG AA 对小字的 4.5:1；而且有 55 处字号 <11px。截图里"看不清"就是这么来的。
+
+def _luminance(color: str):
+    color = color.strip()
+    if color.startswith("#"):
+        if len(color) != 7:
+            return None
+        rgb = [int(color[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    else:
+        nums = re.findall(r"\d+", color)
+        if len(nums) < 3:
+            return None
+        rgb = [int(v) / 255 for v in nums[:3]]
+
+    def f(v):
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (f(v) for v in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(fg: str, bg: str = "#ffffff"):
+    a, b = _luminance(fg), _luminance(bg)
+    if a is None or b is None:
+        return None
+    hi, lo = max(a, b), min(a, b)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_data_text_meets_wcag_aa(css):
+    """承载数据的小字必须达到 AA 4.5:1。
+
+    只查这一页自己的类，不去动全站共享的 --fg3 —— 那是既有问题，
+    不该由一个页面的改动单方面改掉全局 token。
+    """
+    # 这些选择器承载的是数字/标签本身，不是装饰
+    data_text = [".ukpi-label", ".ukpi-hint", ".uchart-stat-label", ".urank-sub",
+                 ".utask-meta", ".uinsight-label", ".ufootnote", ".ux-axis", ".uy-axis"]
+    offenders = []
+    for sel in data_text:
+        m = re.search(re.escape(sel) + r"\{([^}]*)\}", css)
+        if not m:
+            continue
+        body = m.group(1)
+        if "var(--fg3)" not in body:
+            continue
+        offenders.append(sel)
+    assert not offenders, (
+        f"这些承载数据的小字用了 --fg3（白底 2.85:1，低于 AA 4.5:1）：{offenders}"
+    )
+
+
+def test_fg3_really_is_too_low_contrast():
+    """守住上面那条断言的前提：--fg3 确实不达标，--fg2 达标。
+
+    如果哪天有人调亮了 --fg3，这条会失败并提醒：上面的规则可以放宽了。
+    """
+    assert contrast("#999999") < 4.5, "#999 竟然达标了，规则需要复核"
+    assert contrast("#666666") >= 4.5, "--fg2 不达标，数据小字没有安全的去处"
+
+
+def test_no_microscopic_text(css):
+    """这一页自己的样式里不该有 9-10px 的正文文本。
+
+    审计时全页 55 处 <11px 是"看不清"的主因。**只查本页新增的 `u` 前缀类**：
+    全站既有的小字号是别处的历史问题，不该借一个页面的改动去判定。
+
+    例外：坐标轴刻度用 10px 等宽字是图表惯例（密度高、单字符、不承载句子），
+    明确列在白名单里，避免这条规则退化成"不许有例外"的死规矩。
+    """
+    allowed_tiny = {"uy-axis", "ux-axis"}
+    bad = []
+    for m in re.finditer(r"\.(u[a-z0-9-]+)\{([^}]*)\}", css):
+        cls, body = m.group(1), m.group(2)
+        fs = re.search(r"font-size:(\d+)px", body)
+        if fs and int(fs.group(1)) < 11 and cls not in allowed_tiny:
+            bad.append(f".{cls} {fs.group(0)}")
+    assert not bad, f"本页仍有小于 11px 的正文样式：{bad}"
+
+
+def test_headline_content_outweighs_the_tail(css, usage_src):
+    """图表高度不能低于任务列表——信息层级不能倒置。
+
+    审计时图表 260px、任务列表 1119px（20 条），主视觉被列表压过去。
+    """
+    m = re.search(r"\.uchart\{height:(\d+)px", css)
+    assert m and int(m.group(1)) >= 280, "图表又被压矮了"
+    cap = re.search(r"recentSorted\.slice\(0,(\d+)\)", usage_src)
+    assert cap, "最近任务没有限制条数，会把图表比例压垮"
+    assert int(cap.group(1)) <= 10, f"最近任务渲染 {cap.group(1)} 条，太多"

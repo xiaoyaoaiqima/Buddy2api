@@ -413,23 +413,23 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 }
 /* ── AI 用量页 ── 复用主题变量，避免第二套配色 */
 .ukpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.ukpi-label{font-size:11px;color:var(--fg3)}
+.ukpi-label{font-size:11px;color:var(--fg2)}
 .ukpi-val{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:6px}
 .ukpi-val.ok{color:var(--green)}
-.ukpi-hint{font-size:11px;color:var(--fg3);margin-top:5px;line-height:1.5}
+.ukpi-hint{font-size:11px;color:var(--fg2);margin-top:5px;line-height:1.5}
 .uchartctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .uchartctl-sep{width:1px;height:18px;background:var(--border);margin:0 2px}
 .uchart-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
 .uchart-stat{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r)}
-.uchart-stat-label{font-size:10px;color:var(--fg3)}
+.uchart-stat-label{font-size:11px;color:var(--fg2)}
 .uchart-stat-value{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:4px}
-.uchart{height:260px;overflow:hidden;position:relative}
+.uchart{height:300px;overflow:hidden;position:relative}
 .uchart-plot{height:100%;display:flex;align-items:flex-end;gap:2px;position:relative;border-bottom:1px solid var(--border);padding-top:16px;padding-left:48px}
 /* 水平网格线：4 等分，给柱高一个可读的参照，否则只能靠 hover 猜 */
 .ugrid{position:absolute;left:48px;right:0;top:16px;bottom:0;pointer-events:none}
 .ugrid i{position:absolute;left:0;right:0;border-top:1px solid var(--border2)}
 .ugrid i:first-child{border-top-color:var(--border)}
-.uy-axis{position:absolute;left:0;top:16px;bottom:0;width:44px;pointer-events:none;font-family:var(--mono);font-size:9px;color:var(--fg3);text-align:right;padding-right:5px;z-index:1}
+.uy-axis{position:absolute;left:0;top:16px;bottom:0;width:46px;pointer-events:none;font-family:var(--mono);font-size:10px;color:var(--fg2);text-align:right;padding-right:5px;z-index:1}
 .uy-axis span{position:absolute;right:5px;transform:translateY(-50%)}
 .ubar-wrap{flex:1;min-width:2px;height:100%;display:flex;align-items:flex-end;position:relative;border:0;padding:0 1px;background:transparent;cursor:pointer;z-index:2}
 .ubar-wrap:hover .ubar,.ubar-wrap.on .ubar{filter:brightness(1.12)}
@@ -444,11 +444,11 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .usepart-out{background:#7c5cd6}
 .usepart-other{background:#cfd3d8}
 .umedian{position:absolute;left:48px;right:0;border-top:1px dashed var(--green);pointer-events:none;z-index:2}
-.umedian span{position:absolute;right:4px;top:2px;font-size:10px;color:var(--green);background:var(--bg);padding:0 3px}
+.umedian span{position:absolute;right:4px;top:2px;font-size:11px;color:var(--green);background:var(--bg);padding:0 3px}
 .upeak{position:absolute;left:50%;width:6px;height:6px;border-radius:50%;background:var(--red);transform:translateX(-50%);z-index:3}
-.ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:10px;color:var(--fg3);font-family:var(--mono)}
+.ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:10px;color:var(--fg2);font-family:var(--mono)}
 /* 真实浮层：原生 title 延迟约 1 秒且不能排版，这里自己画 */
-.ulegend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin:-4px 0 10px;font-size:11px;color:var(--fg2)}
+.ulegend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin:-4px 0 10px;font-size:11px;color:var(--fg)}
 .ulegend span{display:inline-flex;align-items:center;gap:5px}
 .ulegend i{width:9px;height:9px;border-radius:2px;display:inline-block}
 .ulegend .uline{width:14px;height:0;border-top:2px dashed var(--green);border-radius:0}
@@ -466,25 +466,25 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .urank:last-child{margin-bottom:0}
 .urank-top{display:flex;justify-content:space-between;gap:10px;font-size:12px}
 .urank-name{font-weight:600}
-.urank-sub{font-size:10px;color:var(--fg3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urank-sub{font-size:11px;color:var(--fg2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .utrack{height:6px;background:var(--hover);border-radius:4px;margin-top:6px;overflow:hidden}
 .ufill{height:100%;background:var(--blue);border-radius:4px}
 .uinsights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .uinsight{padding:11px;border:1px solid var(--border);border-radius:var(--r)}
-.uinsight-label{font-size:10px;color:var(--fg3)}
+.uinsight-label{font-size:11px;color:var(--fg2)}
 .uinsight-value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:5px}
 .uinsight-value.warn{color:var(--accent)}
 .uinsight-value.ok{color:var(--green)}
-.uinsight-detail{font-size:10px;color:var(--fg2);line-height:1.55;margin-top:6px}
+.uinsight-detail{font-size:11px;color:var(--fg2);line-height:1.55;margin-top:6px}
 .utask{padding:11px 16px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
 .utask:last-child{border-bottom:0}
 .utask-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.utask-meta{font-size:10px;color:var(--fg3);margin-top:4px}
+.utask-meta{font-size:11px;color:var(--fg2);margin-top:4px}
 .utask-token{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)}
 /* 没有消耗的会话：保留（是"建了没跑"的信号）但降低视觉权重 */
 .utask.zero .utask-title{font-weight:400;color:var(--fg2)}
 .utask.zero .utask-token{color:var(--fg3);font-weight:400}
-.ufootnote{font-size:11px;color:var(--fg3);line-height:1.7;margin:4px 0 20px}
+.ufootnote{font-size:12px;color:var(--fg2);line-height:1.7;margin:4px 0 20px}
 .uranges{display:flex;gap:4px}
 @media(max-width:900px){.ukpis{grid-template-columns:repeat(2,1fr)}.ugrid2{grid-template-columns:1fr}.uinsights{grid-template-columns:1fr}}
 
@@ -1738,9 +1738,9 @@ const app=createApp({
       </div></div>
     </div>
     <div class="card">
-      <div class="card-h">最近任务<span class="sub">最多 20 条</span></div>
+      <div class="card-h">最近任务<span class="sub">按 Token 排序 · 最多 8 条</span></div>
       <div class="card-p" style="padding:0">
-        <div v-for="t in recentSorted" :key="t.title+t.created_at" class="utask" :class="{zero:!t.tokens}">
+        <div v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" class="utask" :class="{zero:!t.tokens}">
           <div><div class="utask-title">{{t.title}}</div><div class="utask-meta">{{t.tool}} · {{t.project}} · {{t.model}} · {{t.created_at.replace('T',' ')}}</div></div>
           <div class="utask-token">{{t.tokens?tok(t.tokens):'—'}}</div>
         </div>
