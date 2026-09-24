@@ -162,3 +162,42 @@ def test_anonymous_requests_get_a_bucket(tmp_path):
 def test_gateway_registered_as_a_tool():
     assert "gateway" in collectors.TOOL_LABELS
     assert "gateway" in collectors.ALLOWED_TOOLS
+
+
+# ── 数据源缺失时的降级行为 ──
+# 这个模块会被别人在自己的机器上跑，他们未必装了全部 5 个工具。
+# 缺数据源必须是"少一块数据"，而不是整页报错。
+
+def test_missing_sources_degrade_gracefully(tmp_path):
+    """所有数据源都不存在时不抛异常，返回空统计。"""
+    from buddy2api.ai_usage.collectors import build_ai_usage_stats
+
+    data = build_ai_usage_stats(
+        range_key="30",
+        claude_root=tmp_path / "no-claude",
+        zcode_db=tmp_path / "no-zcode.sqlite",
+        workbuddy_db=tmp_path / "no-wb.sqlite",
+        workbuddy_traces=tmp_path / "no-traces",
+        gateway_db=tmp_path / "no-gw.sqlite",
+        codex_state_db=tmp_path / "no-codex.sqlite",
+        usage_cache_db=tmp_path / "cache.sqlite",
+    )
+    assert data["summary"]["tasks"] == 0
+    assert data["summary"]["tokens"] == 0
+
+
+def test_codex_path_is_overridable(tmp_path):
+    """Codex 采集器必须接受路径覆盖。
+
+    它原先在 _codex_payload 里硬编码读真实 ~/.codex，导致任何"换个目录跑"的
+    测试或部署都会悄悄读到宿主机数据——数字看着正常，其实来源是错的。
+    """
+    import inspect
+
+    from buddy2api.ai_usage import collectors
+
+    sig = inspect.signature(collectors.build_ai_usage_stats)
+    assert "codex_state_db" in sig.parameters, "build_ai_usage_stats 没有 codex_state_db 参数"
+
+    helper = inspect.getsource(collectors._codex_payload)
+    assert "state_db" in helper, "_codex_payload 没有把 state_db 透传下去"

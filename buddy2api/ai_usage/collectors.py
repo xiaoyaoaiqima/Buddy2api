@@ -38,6 +38,12 @@ DEFAULT_WORKBUDDY_TRACES = Path.home() / ".workbuddy" / "traces"
 DEFAULT_AI_USAGE_CACHE_DB = Path(__file__).resolve().parents[2] / "data" / "ai_usage_cache.sqlite"
 # 网关自己的库。与 database.DB_PATH 保持同一来源，避免两处各写各的。
 # 用函数而不是常量：测试会 monkeypatch CB_GATEWAY_DB_PATH，模块级常量会读成旧值。
+def default_codex_state_db() -> Path:
+    from buddy2api.ai_usage.codex_usage import DEFAULT_CODEX_STATE_DB
+
+    return Path(DEFAULT_CODEX_STATE_DB)
+
+
 def default_gateway_db() -> Path:
     import os
 
@@ -972,8 +978,21 @@ def _external_payload(
     }
 
 
-def _codex_payload(range_key: str, provider: str, now: datetime) -> dict[str, Any]:
-    payload = build_codex_usage_stats(range_key=range_key, provider=provider, now=now)
+def _codex_payload(
+    range_key: str,
+    provider: str,
+    now: datetime,
+    *,
+    state_db: str | Path | None = None,
+    cache_db: str | Path | None = None,
+) -> dict[str, Any]:
+    payload = build_codex_usage_stats(
+        range_key=range_key,
+        provider=provider,
+        now=now,
+        **({"state_db": state_db} if state_db is not None else {}),
+        **({"cache_db": cache_db} if cache_db is not None else {}),
+    )
     for row in payload["daily"]:
         row.setdefault("requests", 0); row.setdefault("tool_calls", 0); row.setdefault("errors", 0)
     for row in payload["recent_tasks"]:
@@ -1062,6 +1081,7 @@ def build_ai_usage_stats(
     workbuddy_db: str | Path = DEFAULT_WORKBUDDY_DB,
     workbuddy_traces: str | Path = DEFAULT_WORKBUDDY_TRACES,
     usage_cache_db: str | Path = DEFAULT_AI_USAGE_CACHE_DB,
+    codex_state_db: str | Path | None = None,
     gateway_db: str | Path | None = None,
     cache_ttl_seconds: float = 15,
 ) -> dict[str, Any]:
@@ -1073,9 +1093,23 @@ def build_ai_usage_stats(
     now = now or datetime.now(LOCAL_TZ)
     cache_db = Path(usage_cache_db).expanduser()
     selected = list(TOOL_LABELS) if tool_key == "all" else [tool_key]
+    # Codex 库不存在时跳过：其它三个数据源在缺文件时都是返回空，这里保持一致，
+    # 否则一台没装 Codex 的机器会整个页面报错。
+    def _codex_available() -> bool:
+        if codex_state_db is None:
+            return default_codex_state_db().is_file()
+        return Path(codex_state_db).expanduser().is_file()
+
     payloads: list[tuple[str, dict[str, Any]]] = []
-    if "codex" in selected:
-        payloads.append(("codex", _codex_payload(range_key, provider, now)))
+    if "codex" in selected and _codex_available():
+        payloads.append(
+            (
+                "codex",
+                _codex_payload(
+                    range_key, provider, now, state_db=codex_state_db, cache_db=usage_cache_db
+                ),
+            )
+        )
     if "claude" in selected:
         root = Path(claude_root).expanduser()
         sessions, events = _cached_source(
