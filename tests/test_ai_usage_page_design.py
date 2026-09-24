@@ -103,19 +103,56 @@ def test_bars_have_hover_feedback(css):
     assert ".ubar-wrap:hover" in css, "柱子没有 hover 反馈"
 
 
-def test_two_columns_are_roughly_balanced(usage_src):
-    """两栏高度差一倍会让短的那栏拖出大片空白。
+def test_editorial_layout_avoids_the_card_grid(usage_src):
+    """不要"内容切成 N 张同样的圆角卡片"。
 
-    第一版左栏 361px / 右栏 637px。做法上把「模型分布」从独占一行挪进左栏。
+    frontend-design skill 把这条点名为生成感第 4 特征原文：
+    "the SaaS-card kit: content chopped into identical rounded cards"。
+    上一版有 11 张同款卡片，是本页"模板感"的根源。改成细分隔线分区后应为 0。
     """
-    grid = re.search(r'<div class="ugrid2">(.*?)\n    </div>', usage_src, re.S)
-    assert grid, "找不到两栏容器"
-    body = grid.group(1)
-    # 左栏应该是"若干张短卡片"的容器，右栏是被限制行数的长列表
-    assert body.count('class="card"') >= 3, "两栏里应该有 3 张卡片（工具/模型 + 项目）"
-    assert "slice(0,12)" in body or "slice(0,10)" in body, (
-        "长的那栏没有限制行数，会把另一栏拖出巨大空白"
-    )
+    cards = len(re.findall(r'class="card"', usage_src))
+    assert cards == 0, f"这一页又用回了 {cards} 张卡片式布局"
+    assert "ublock" in usage_src, "没有无边框分区（.ublock）"
+
+
+def test_main_number_leads_the_page(usage_src, css):
+    """主数必须是页面上最大的文字，且远大于次级标签。
+
+    用字号跳跃建立层级（44 → 20 → 12），而不是靠给每块加个框。
+    """
+    hero = re.search(r"\.uhero-num\{([^}]*)\}", css)
+    assert hero, "没有主数样式"
+    size = int(re.search(r"font-size:(\d+)px", hero.group(1)).group(1))
+    assert size >= 34, f"主数只有 {size}px，主体不突出"
+    fact = re.search(r"\.ufact-n\{([^}]*)\}", css)
+    assert fact, "没有次级数字样式"
+    sub = int(re.search(r"font-size:(\d+)px", fact.group(1)).group(1))
+    assert size >= sub * 1.8, f"主数({size}) 与次级数字({sub}) 差距不足，层级不清"
+
+
+def test_insight_facts_are_named_not_decorative(usage_src):
+    """辅助数字必须自带说明，否则读者不知道 79% 是什么的 79%。
+
+    每张"事实"都由数字 + 一句解释组成，禁止裸数字堆砌。
+    """
+    # 每个 ufact 是单行，用非贪婪匹配到自己那个 </div> 结束；
+    # 写成 `</div>\s*</div>` 会跨块吞并，导致只匹配到 1 个。
+    facts = re.findall(r'<div class="ufact">.*?</div>', usage_src, re.S)
+    assert len(facts) >= 2, "辅助事实块不足"
+    for f in facts:
+        assert "ufact-n" in f, "事实块缺少数字"
+        assert "ufact-l" in f, "事实块缺少解释文字（裸数字读者无法理解）"
+
+
+def test_no_midpoint_meta_strings(usage_src):
+    """skill 点名的 'A · B · C' 中点串是模板化特征之一。
+
+    表头与标签用空格或分隔线，不用中点串堆信息。
+    """
+    # 允许"用 · 连接两个并列项"的极少数情况（如工具 · 项目），但不能出现在标题/说明里
+    h3 = re.findall(r"<h3>(.*?)</h3>", usage_src, re.S)
+    offenders = [h for h in h3 if "·" in h]
+    assert not offenders, f"分区标题里用了中点串：{offenders}"
 
 
 def test_recent_tasks_prioritize_nonzero_tokens(usage_src):

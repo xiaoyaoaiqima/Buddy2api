@@ -411,34 +411,59 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
   .dash-hero{padding:14px}.health-kpis{grid-template-columns:repeat(3,1fr)}.metric-row{grid-template-columns:1fr}.metric{border-right:0;border-bottom:1px solid var(--border2)}.metric:last-child{border-bottom:0}
   .card-h{font-size:14px}.card-h .sub{max-width:50%;text-align:right}.searchbox{min-width:190px}.modal{max-width:calc(100vw - 20px)}
 }
-/* ── AI 用量页 ── 复用主题变量，避免第二套配色 */
-.ukpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.ukpi-label{font-size:11px;color:var(--fg2)}
-.ukpi-val{font-family:var(--mono);font-size:24px;font-weight:700;margin-top:6px}
-.ukpi-val.ok{color:var(--green)}
-.ukpi-hint{font-size:11px;color:var(--fg2);margin-top:5px;line-height:1.5}
-.uchartctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.uchartctl-sep{width:1px;height:18px;background:var(--border);margin:0 2px}
-.uchart-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
-.uchart-stat{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r)}
-.uchart-stat-label{font-size:11px;color:var(--fg2)}
-.uchart-stat-value{font-family:var(--mono);font-size:13px;font-weight:600;margin-top:4px}
+/* ── AI 用量页（编辑型布局）────────────────────────────────────────
+   设计意图：一条主线（30 天序列）+ 注脚。刻意**不用卡片**——上一版 11 张同款
+   圆角卡是"模板感"的根源。这里改用细分隔线分区，靠字号跳跃（32/13/11）建立
+   层级，只有主图保留容器。配色全部复用宿主变量，避免这一页像另一个产品。
+   字号下限 11px，数据文字一律 --fg2（白底 6.02:1，达 WCAG AA）。 */
+.utopbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 0 14px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.utitle{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.usub{font-size:12px;color:var(--fg2)}
+.uspacer{flex:1}
+.ubtn{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 11px;font:inherit;font-size:12px;color:var(--fg2);cursor:pointer;white-space:nowrap}
+.ubtn:hover{background:var(--hover);color:var(--fg)}
+.ubtn.on{background:var(--fg);border-color:var(--fg);color:#fff;font-weight:600}
+.ubtn:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+.ubtn:disabled{opacity:.5;cursor:default}
+.uselect{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font:inherit;font-size:12px;color:var(--fg2)}
+.uranges{display:flex;gap:4px}
+.uload,.uerr{padding:60px 0;text-align:center;color:var(--fg2);font-size:13px}
+.uload p,.uerr p{margin-top:12px}
+
+/* 主数 + 洞察：横排一行文字块，不做等宽 KPI 盒子 */
+.uhero{display:flex;gap:44px;align-items:flex-end;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:22px}
+.uhero-num{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.uhero-cap{font-size:12px;color:var(--fg2);margin-top:8px}
+.uhero-facts{display:flex;gap:36px;flex-wrap:wrap}
+.ufact{max-width:210px}
+.ufact-n{display:block;font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.1}
+.ufact-l{display:block;font-size:11px;color:var(--fg2);line-height:1.5;margin-top:5px}
+
+.upanel{padding:16px;border:1px solid var(--border);border-radius:8px;margin-bottom:26px}
+.upanel-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.upanel-head h2{margin:0;font-size:14px;font-weight:600}
+.uchartctl{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.uctl-sep{width:1px;height:16px;background:var(--border);margin:0 3px}
+.ulegend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--fg)}
+.ulegend span{display:inline-flex;align-items:center;gap:5px}
+.ulegend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.ulegend .uline{width:14px;height:0;border-top:2px dashed var(--green);border-radius:0}
+.ulegend .udot{width:7px;height:7px;border-radius:50%;background:var(--red)}
+.ulegend-sep{width:1px;height:12px;background:var(--border)}
+.ulegend-hint{color:var(--fg2);margin-left:auto}
 .uchart{height:300px;overflow:hidden;position:relative}
-.uchart-plot{height:100%;display:flex;align-items:flex-end;gap:2px;position:relative;border-bottom:1px solid var(--border);padding-top:16px;padding-left:48px}
-/* 水平网格线：4 等分，给柱高一个可读的参照，否则只能靠 hover 猜 */
 .ugrid{position:absolute;left:48px;right:0;top:16px;bottom:0;pointer-events:none}
-.ugrid i{position:absolute;left:0;right:0;border-top:1px solid var(--border2)}
+.ugrid i{position:absolute;left:0;right:0;border-top:1px solid var(--border)}
 .ugrid i:first-child{border-top-color:var(--border)}
-.uy-axis{position:absolute;left:0;top:16px;bottom:0;width:46px;pointer-events:none;font-family:var(--mono);font-size:10px;color:var(--fg2);text-align:right;padding-right:5px;z-index:1}
+.uy-axis{position:absolute;left:0;top:16px;bottom:0;width:46px;pointer-events:none;font-family:var(--mono);font-size:10px;color:var(--fg2);text-align:right}
 .uy-axis span{position:absolute;right:5px;transform:translateY(-50%)}
+.uchart-plot{height:100%;display:flex;align-items:flex-end;gap:2px;position:relative;border-bottom:1px solid var(--border);padding-top:16px;padding-left:48px}
 .ubar-wrap{flex:1;min-width:2px;height:100%;display:flex;align-items:flex-end;position:relative;border:0;padding:0 1px;background:transparent;cursor:pointer;z-index:2}
 .ubar-wrap:hover .ubar,.ubar-wrap.on .ubar{filter:brightness(1.12)}
 .ubar-wrap.on .ubar{outline:2px solid var(--fg);outline-offset:1px}
 .ubar-wrap:focus-visible{outline:2px solid var(--blue);outline-offset:1px;border-radius:3px}
 .ubar{width:100%;border-radius:3px 3px 0 0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;background:var(--blue);min-height:2px;transition:filter .12s}
 .usepart{width:100%;display:block}
-/* 缓存输入是"复用"，非缓存是"新读"——这是图上最重要的对比，必须一眼分开。
-   浅蓝(复用) vs 橙(新增消耗) vs 紫(产出) vs 灰(其他)，四种色相而非同色深浅。 */
 .usepart-cached{background:#a8c8f0}
 .usepart-fresh{background:#e8873a}
 .usepart-out{background:#7c5cd6}
@@ -446,48 +471,50 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .umedian{position:absolute;left:48px;right:0;border-top:1px dashed var(--green);pointer-events:none;z-index:2}
 .umedian span{position:absolute;right:4px;top:2px;font-size:11px;color:var(--green);background:var(--bg);padding:0 3px}
 .upeak{position:absolute;left:50%;width:6px;height:6px;border-radius:50%;background:var(--red);transform:translateX(-50%);z-index:3}
-.ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:10px;color:var(--fg2);font-family:var(--mono)}
-/* 真实浮层：原生 title 延迟约 1 秒且不能排版，这里自己画 */
-.ulegend{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin:-4px 0 10px;font-size:11px;color:var(--fg)}
-.ulegend span{display:inline-flex;align-items:center;gap:5px}
-.ulegend i{width:9px;height:9px;border-radius:2px;display:inline-block}
-.ulegend .uline{width:14px;height:0;border-top:2px dashed var(--green);border-radius:0}
-.ulegend .udot{width:7px;height:7px;border-radius:50%;background:var(--red)}
-.ulegend-sep{width:1px;height:12px;background:var(--border)}
+.ux-axis{display:flex;justify-content:space-between;margin-top:6px;padding-left:48px;font-size:11px;color:var(--fg2);font-family:var(--mono)}
 .utip{position:absolute;bottom:100%;z-index:6;min-width:190px;padding:9px 11px;margin-bottom:6px;background:#1f2430;color:#f2f4f8;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.26);font-size:11px;line-height:1.5;pointer-events:none;text-align:left;transform:translateX(-50%)}
 .utip b{display:block;font-family:var(--mono);font-size:11px;margin-bottom:5px;color:#fff}
 .utip-row{display:flex;justify-content:space-between;gap:14px;white-space:nowrap}
 .utip-row em{font-style:normal;color:#a9b1c0}
 .utip-row i{font-style:normal;font-family:var(--mono)}
 .utip-peak{display:block;margin-top:5px;padding-top:4px;border-top:1px solid rgba(255,255,255,.16);color:#ff9b8a}
-/* 左栏（图表）宽、右栏（排行）窄：两栏等宽会让窄内容拖出大片空白 */
-.ugrid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;margin-bottom:14px;align-items:start}
-.urank{margin-bottom:14px}
-.urank:last-child{margin-bottom:0}
-.urank-top{display:flex;justify-content:space-between;gap:10px;font-size:12px}
-.urank-name{font-weight:600}
-.urank-sub{font-size:11px;color:var(--fg2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.utrack{height:6px;background:var(--hover);border-radius:4px;margin-top:6px;overflow:hidden}
-.ufill{height:100%;background:var(--blue);border-radius:4px}
-.uinsights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.uinsight{padding:11px;border:1px solid var(--border);border-radius:var(--r)}
-.uinsight-label{font-size:11px;color:var(--fg2)}
-.uinsight-value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:5px}
-.uinsight-value.warn{color:var(--accent)}
-.uinsight-value.ok{color:var(--green)}
-.uinsight-detail{font-size:11px;color:var(--fg2);line-height:1.55;margin-top:6px}
-.utask{padding:11px 16px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
-.utask:last-child{border-bottom:0}
-.utask-title{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.utask-meta{font-size:11px;color:var(--fg2);margin-top:4px}
-.utask-token{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--green)}
-/* 没有消耗的会话：保留（是"建了没跑"的信号）但降低视觉权重 */
-.utask.zero .utask-title{font-weight:400;color:var(--fg2)}
-.utask.zero .utask-token{color:var(--fg3);font-weight:400}
-.ufootnote{font-size:12px;color:var(--fg2);line-height:1.7;margin:4px 0 20px}
-.uranges{display:flex;gap:4px}
-@media(max-width:900px){.ukpis{grid-template-columns:repeat(2,1fr)}.ugrid2{grid-template-columns:1fr}.uinsights{grid-template-columns:1fr}}
 
+/* 无边框分区：靠标题与分隔线而非卡片 */
+.usplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;margin-bottom:26px}
+.ublock{margin-bottom:26px}
+.ublock h3{display:flex;align-items:baseline;gap:10px;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.ublock h3 span{font-size:11px;font-weight:400;color:var(--fg2)}
+.urow{margin-bottom:13px}
+.urow-head{display:flex;justify-content:space-between;gap:10px;font-size:12px}
+.urow-name{font-weight:600}
+.urow-val{font-family:var(--mono);font-size:12px}
+.urow-track{height:5px;background:var(--hover);border-radius:3px;margin-top:5px;overflow:hidden}
+.urow-fill{height:100%;border-radius:3px}
+.urow-sub{font-size:11px;color:var(--fg2);margin-top:5px}
+/* 表格：固定布局 + 列宽，避免省略号把相邻列挤成两行（曾出现 .dim 只有 22px、
+   30 个单元格折行）。列宽在这里统一声明，单元格不再各自争宽度。 */
+.utable{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.utable td{padding:7px 8px 7px 0;border-bottom:1px solid var(--border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.utable tr:last-child td{border-bottom:0}
+.utable .dim{color:var(--fg2);font-size:11px}
+.utable .num{font-family:var(--mono);text-align:right;padding-right:0}
+.utable tr.zero td{color:var(--fg2)}
+/* 两列细表：名称列吃掉剩余宽度，数值列固定 */
+.utable.cols-2 td:first-child{width:auto}
+.utable.cols-2 td:last-child{width:82px}
+/* 最近会话：标题 / 元信息 / 时间 / 数值 */
+.utable.cols-4 td:nth-child(1){width:38%}
+.utable.cols-4 td:nth-child(2){width:auto}
+.utable.cols-4 td:nth-child(3){width:88px}
+.utable.cols-4 td:nth-child(4){width:74px}
+.unotes{margin:0;padding:0;list-style:none}
+.unotes li{padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6;color:var(--fg2)}
+.unotes li:last-child{border-bottom:0}
+.unotes b{font-family:var(--mono);font-size:13px;color:var(--fg)}
+.unotes .unote-label{color:var(--fg);font-weight:600}
+.unotes li.warn b{color:var(--red)}
+.ufootnote{font-size:12px;color:var(--fg2);line-height:1.7;margin:0 0 20px;padding-top:14px;border-top:1px solid var(--border)}
+@media(max-width:900px){.uhero{gap:26px}.uhero-num{font-size:34px}.usplit{grid-template-columns:1fr;gap:0}.uchart{height:230px}}
 </style>
 </head>
 <body>
@@ -1603,6 +1630,22 @@ const app=createApp({
   const yTicks=computed(()=>{const m=maxValue.value;return [1,0.5,0].map(f=>({v:f*m,pct:f*100}))})
   // 图例必须跟着当前度量走：堆叠图里颜色是有含义的，不给说明就是噪声；
   // 而"看输出 Token"这类非堆叠视图不该还显示缓存/非缓存两层。
+  // 网关转发占比：这是本页最有洞察的一个数（自家流量 vs 各客户端）。
+  // 分母用总量，缺 gateway 源时是 0，不编造。
+  const gatewayShare=computed(()=>{
+    const total=Number(d.value?.summary?.tokens||0);
+    const gw=(d.value?.tools||[]).find(t=>t.key==='gateway');
+    return total&&gw?Math.round(Number(gw.tokens)/total*100):0;
+  });
+  const peakDay=computed(()=>{const rows=daily.value;if(!rows.length)return '—';const top=rows.reduce((a,b)=>valueOf(b)>valueOf(a)?b:a);return top.date.slice(5)});
+  const peakDays=computed(()=>values.value.filter(v=>v>0&&v>p90Value.value).length);
+  const peakShare=computed(()=>{const n=values.value.filter(v=>v>0).length;return n?Math.round(peakDays.value/n*100):0});
+  const swingRatio=computed(()=>{
+    const pos=values.value.filter(v=>v>0);
+    if(pos.length<2)return '—';
+    return (Math.max(...pos)/Math.min(...pos)).toFixed(1);
+  });
+  const chartTitle=computed(()=>view.value==='tasks'?'每日新建会话':({tokens:'每日处理量',tool_tokens:'每日量 · 按工具',non_cached_input_tokens:'每日非缓存输入',output_tokens:'每日输出',tokens_per_thread:'每日每会话均值',agent_tokens:'每日量 · 主会话与子 Agent'}[metric.value]||'每日处理量'));
   const legendOf=computed(()=>{
     if(view.value==='tasks')return [['当天新建主会话','var(--blue)']];
     if(metric.value==='tokens')return [['缓存输入','#a8c8f0'],['非缓存输入','#e8873a'],['输出','#7c5cd6'],['其他','#cfd3d8']];
@@ -1622,135 +1665,151 @@ const app=createApp({
   onMounted(load);
   return{d,ld,err,range,tool,provider,metric,view,selected,ranges,metrics,toolNames,toolColors,
     load,pickRange,pickTool,pickProvider,tok,n,pct,valueOf,daily,maxValue,medianValue,p90Value,
-    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,I}
+    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,I}
 },template:`
 <div>
-  <div class="phead"><h1>AI 用量</h1><p>本机各 AI 工具的使用轨迹 · 只读扫描，不上传内容</p></div>
-  <div class="tbar">
-    <div class="uranges"><button class="btn s" v-for="r in ranges" :key="r[0]" :class="{pri:range===r[0]}" @click="pickRange(r[0])">{{r[1]}}</button></div>
-    <select class="selectctl" :value="tool" @change="pickTool($event.target.value)">
+  <div class="tbar utopbar">
+    <span class="utitle">AI 用量</span>
+    <span class="usub">本机 5 个来源 · 只读扫描</span>
+    <div class="uspacer"></div>
+    <div class="uranges"><button v-for="r in ranges" :key="r[0]" class="ubtn" :class="{on:range===r[0]}" @click="pickRange(r[0])">{{r[1]}}</button></div>
+    <select class="uselect" :value="tool" @change="pickTool($event.target.value)">
       <option value="all">全部工具</option>
       <option v-for="(label,key) in toolNames" :key="key" :value="key">{{label}}</option>
     </select>
-    <select class="selectctl" v-if="d&&d.providers&&d.providers.length" :value="provider" @change="pickProvider">
+    <select class="uselect" v-if="d&&d.providers&&d.providers.length" :value="provider" @change="pickProvider">
       <option value="all">全部 Provider</option>
       <option v-for="x in d.providers" :key="x.name" :value="x.name">{{x.name}}</option>
     </select>
-    <button class="btn s" @click="load" :disabled="ld"><span v-html="I.refresh"></span>{{ld?'扫描中':'刷新'}}</button>
-    <div class="spacer"></div>
-    <span class="tag" v-if="d&&d.range_label">{{d.range_label}} · {{d.tool_label}}</span>
+    <button class="ubtn" @click="load" :disabled="ld">{{ld?'扫描中':'刷新'}}</button>
   </div>
-  <div v-if="ld" class="load"><div class="spin"></div><p class="hint">正在扫描本机轨迹…首次扫描较慢（可能 10-30 秒），之后走缓存</p></div>
-  <div v-else-if="err" class="card card-p empty"><div class="em">⚠️</div><p>{{err}}</p><button class="btn s" @click="load">重试</button></div>
+
+  <div v-if="ld" class="uload"><div class="spin"></div><p>正在扫描本机轨迹…首次可能 10-30 秒</p></div>
+  <div v-else-if="err" class="uerr"><p>{{err}}</p><button class="ubtn" @click="load">重试</button></div>
+
   <template v-else-if="d">
-    <div class="ukpis">
-      <div class="card"><div class="ukpi-label">主会话</div><div class="ukpi-val">{{n(d.summary.tasks)}}</div><div class="ukpi-hint">{{n(d.summary.subagent_tasks)}} 个子 Agent 会话另计</div></div>
-      <div class="card"><div class="ukpi-label">AI 处理量</div><div class="ukpi-val ok">{{tok(d.summary.tokens)}}</div><div class="ukpi-hint">{{n(d.summary.involved_threads)}} 个会话有消耗 · 缓存占比 {{pct(d.summary.cache_ratio)}}</div></div>
-      <div class="card"><div class="ukpi-label">活跃天数</div><div class="ukpi-val">{{n(d.summary.active_days)}}</div><div class="ukpi-hint">按事件发生日</div></div>
-      <div class="card"><div class="ukpi-label">涉及项目</div><div class="ukpi-val">{{n(d.summary.projects)}}</div><div class="ukpi-hint">按工作目录去重</div></div>
-      <div class="card"><div class="ukpi-label">模型调用</div><div class="ukpi-val">{{n(d.summary.requests)}}</div><div class="ukpi-hint">{{n(d.summary.tool_calls)}} 次工具调用 · {{n(d.summary.errors)}} 次错误</div></div>
+    <div class="uhero">
+      <div class="uhero-main">
+        <div class="uhero-num">{{tok(d.summary.tokens)}}</div>
+        <div class="uhero-cap">{{d.range_label}}{{d.summary.first_date?' · '+d.summary.first_date+' 至 '+d.summary.last_date:''}} 处理量</div>
+      </div>
+      <div class="uhero-facts">
+        <div class="ufact"><span class="ufact-n">{{pct(d.summary.cache_ratio)}}</span><span class="ufact-l">缓存命中：输入里被复用的比例，越高越省</span></div>
+        <div class="ufact"><span class="ufact-n">{{gatewayShare}}%</span><span class="ufact-l">经网关转发：其余来自各客户端直连</span></div>
+        <div class="ufact"><span class="ufact-n">{{n(d.summary.requests)}}</span><span class="ufact-l">模型调用 · {{n(d.summary.tasks)}} 个会话 · {{n(d.summary.projects)}} 个项目</span></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-h">每日用量<span class="sub">{{d.summary.first_date}} 至 {{d.summary.last_date}}</span></div>
-      <div class="card-p">
+
+    <div class="upanel">
+      <div class="upanel-head">
+        <h2>{{chartTitle}}</h2>
         <div class="uchartctl">
-          <button class="btn s" :class="{pri:view==='tokens'}" @click="view='tokens'">看 Token</button>
-          <button class="btn s" :class="{pri:view==='tasks'}" @click="view='tasks'">看会话数</button>
-          <span v-if="view==='tokens'" class="uchartctl-sep"></span>
-          <button v-for="m in metrics" :key="m[0]" v-if="view==='tokens'" class="btn s" :class="{pri:metric===m[0]}" @click="metric=m[0]">{{m[1]}}</button>
-        </div>
-        <div class="ulegend">
-          <span v-for="lg in legendOf" :key="lg[0]"><i :style="{background:lg[1]}"></i>{{lg[0]}}</span>
-          <span class="ulegend-sep"></span>
-          <span><i class="uline"></i>典型活跃日</span>
-          <span><i class="udot"></i>超过 P90 高峰</span>
-        </div>
-        <div class="uchart-stats">
-          <div class="uchart-stat"><div class="uchart-stat-label">最高一天</div><div class="uchart-stat-value">{{tok(maxValue)}}</div></div>
-          <div class="uchart-stat"><div class="uchart-stat-label">典型活跃日</div><div class="uchart-stat-value">{{tok(medianValue)}}</div></div>
-          <div class="uchart-stat"><div class="uchart-stat-label">高峰门槛 P90</div><div class="uchart-stat-value">{{tok(p90Value)}}</div></div>
-        </div>
-        <div class="uchart">
-          <div class="ugrid"><i v-for="t in yTicks" :key="t.pct" :style="{top:t.pct+'%'}"></i></div>
-          <div class="uy-axis"><span v-for="t in yTicks" :key="t.pct" :style="{top:t.pct+'%'}">{{tok(t.v)}}</span></div>
-          <div class="uchart-plot">
-            <div class="umedian" v-if="medianValue" :style="{bottom:medianValue/maxValue*100+'%'}"><span>典型 {{tok(medianValue)}}</span></div>
-            <button v-for="(row,idx) in daily" :key="row.date" class="ubar-wrap" :class="{on:selected===row.date}"
-              @click="pickDay(row)" @mouseenter="hover=idx" @mouseleave="hover=null" @focus="hover=idx" @blur="hover=null"
-              :aria-label="row.date+'，共 '+tok(row.tokens)+' Token'">
-              <span class="utip" v-if="hover===idx" :style="tipStyle(idx)">
-                <b>{{row.date}}</b>
-                <span class="utip-row" v-for="r in tipRows(row)" :key="r[0]"><em>{{r[0]}}</em><i>{{r[1]}}</i></span>
-                <span class="utip-peak" v-if="isPeak(row)">▲ 超过当前范围 P90</span>
-              </span>
-              <span class="upeak" v-if="isPeak(row)" :style="{bottom:Math.max(2,barHeight(row))+'%'}"></span>
-              <span class="ubar" :style="{height:barHeight(row)+'%'}">
-                <span v-for="(s,i) in (rowSegments(row)||[])" :key="i" class="usepart" :class="s.c" :style="{height:s.w+'%',background:s.color||''}"></span>
-              </span>
-            </button>
-          </div>
-        </div>
-        <div class="ux-axis"><span>{{dayLabel(d.summary.first_date)}}</span><span>{{dayLabel(daily[Math.floor((daily.length-1)/2)]?.date)}}</span><span>{{dayLabel(d.summary.last_date)}}</span></div>
-      </div>
-    </div>
-    <div class="ugrid2">
-      <div>
-        <div class="card">
-          <div class="card-h">工具分布<span class="sub">本机可验证数据</span></div>
-          <div class="card-p">
-            <div v-for="t in d.tools" :key="t.key" class="urank">
-              <div class="urank-top"><div><div class="urank-name">{{t.name}}</div><div class="urank-sub">{{t.data_quality}}</div></div><span>{{t.tasks?n(t.tasks)+' 个主会话 · ':''}}{{tok(t.tokens)}}</span></div>
-              <div class="utrack"><div class="ufill" :style="{width:(t.tokens/rankMax(d.tools,'tokens')*100)+'%',background:toolColors[t.key]||'#8b5cf6'}"></div></div>
-            </div>
-            <div class="empty" v-if="!d.tools.length">暂无数据</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-h">模型分布<span class="sub">根任务</span></div>
-          <div class="card-p">
-            <div v-for="m in d.models.slice(0,8)" :key="m.name" class="urank">
-              <div class="urank-top"><div class="urank-name">{{m.name}}</div><span>{{m.tasks?n(m.tasks)+' 个 · ':''}}{{tok(m.tokens)}}</span></div>
-              <div class="utrack"><div class="ufill" :style="{width:(m.tokens/rankMax(d.models,'tokens')*100)+'%'}"></div></div>
-            </div>
-            <div class="empty" v-if="!d.models.length">暂无数据</div>
-          </div>
+          <button class="ubtn" :class="{on:view==='tokens'}" @click="view='tokens'">Token</button>
+          <button class="ubtn" :class="{on:view==='tasks'}" @click="view='tasks'">会话数</button>
+          <span v-if="view==='tokens'" class="uctl-sep"></span>
+          <button v-for="m in metrics" :key="m[0]" v-if="view==='tokens'" class="ubtn" :class="{on:metric===m[0]}" @click="metric=m[0]">{{m[1]}}</button>
         </div>
       </div>
-      <div class="card">
-        <div class="card-h">项目分布<span class="sub">{{selected?selected+' 活跃项目':'按当前范围工作目录'}}</span></div>
-        <div class="card-p">
-          <div v-for="x in projectRows.slice(0,12)" :key="x.name" class="urank">
-            <div class="urank-top"><div><div class="urank-name">{{x.name}}</div><div class="urank-sub" v-if="x.cwd">{{x.cwd}}</div></div><span>{{x.tasks?n(x.tasks)+' 个 · ':''}}{{tok(x.tokens)}}</span></div>
-            <div class="utrack"><div class="ufill" :style="{width:(x.tokens/rankMax(projectRows,'tokens')*100)+'%'}"></div></div>
-          </div>
-          <div class="empty" v-if="!projectRows.length">暂无数据</div>
+      <div class="ulegend">
+        <span v-for="lg in legendOf" :key="lg[0]"><i :style="{background:lg[1]}"></i>{{lg[0]}}</span>
+        <span class="ulegend-sep"></span>
+        <span><i class="uline"></i>典型</span>
+        <span><i class="udot"></i>高于 P90</span>
+        <span class="ulegend-hint">点柱子看当天项目</span>
+      </div>
+      <div class="uchart">
+        <div class="ugrid"><i v-for="t in yTicks" :key="t.pct" :style="{top:t.pct+'%'}"></i></div>
+        <div class="uy-axis"><span v-for="t in yTicks" :key="t.pct" :style="{top:t.pct+'%'}">{{tok(t.v)}}</span></div>
+        <div class="uchart-plot">
+          <div class="umedian" v-if="medianValue" :style="{bottom:medianValue/maxValue*100+'%'}"><span>典型 {{tok(medianValue)}}</span></div>
+          <button v-for="(row,idx) in daily" :key="row.date" class="ubar-wrap" :class="{on:selected===row.date}"
+            @click="pickDay(row)" @mouseenter="hover=idx" @mouseleave="hover=null" @focus="hover=idx" @blur="hover=null"
+            :aria-label="row.date+'，共 '+tok(row.tokens)+' Token'">
+            <span class="utip" v-if="hover===idx" :style="tipStyle(idx)">
+              <b>{{row.date}}</b>
+              <span class="utip-row" v-for="r in tipRows(row)" :key="r[0]"><em>{{r[0]}}</em><i>{{r[1]}}</i></span>
+              <span class="utip-peak" v-if="isPeak(row)">高于当前范围 P90</span>
+            </span>
+            <span class="upeak" v-if="isPeak(row)" :style="{bottom:Math.max(2,barHeight(row))+'%'}"></span>
+            <span class="ubar" :style="{height:barHeight(row)+'%'}">
+              <span v-for="(s,i) in (rowSegments(row)||[])" :key="i" class="usepart" :class="s.c" :style="{height:s.w+'%',background:s.color||''}"></span>
+            </span>
+          </button>
         </div>
       </div>
+      <div class="ux-axis"><span>{{dayLabel(d.summary.first_date)}}</span><span>{{dayLabel(daily[Math.floor((daily.length-1)/2)]?.date)}}</span><span>{{dayLabel(d.summary.last_date)}}</span></div>
     </div>
-    <div class="card" v-if="d.insights&&d.insights.length">
-      <div class="card-h">使用习惯诊断<span class="sub">从轨迹识别可改善模式</span></div>
-      <div class="card-p"><div class="uinsights">
-        <div v-for="x in d.insights" :key="x.label" class="uinsight">
-          <div class="uinsight-label">{{x.label}}</div>
-          <div class="uinsight-value" :class="{warn:x.level==='warn',ok:x.level==='ok'}">{{x.value}}</div>
-          <div class="uinsight-detail">{{x.detail}}</div>
+
+    <div class="usplit">
+      <div class="ublock">
+        <h3>构成<span>{{selected?selected+' 当天':'整个范围'}}</span></h3>
+        <div v-for="t in d.tools" :key="t.key" class="urow">
+          <div class="urow-head"><span class="urow-name">{{t.name}}</span><span class="urow-val">{{tok(t.tokens)}}</span></div>
+          <div class="urow-track"><div class="urow-fill" :style="{width:(t.tokens/rankMax(d.tools,'tokens')*100)+'%',background:toolColors[t.key]}"></div></div>
+          <div class="urow-sub">{{t.tasks?n(t.tasks)+' 个会话':'无独立会话'}}{{t.data_quality==='完整'?'':' · 子 Agent 拆分不可用'}}</div>
         </div>
-      </div></div>
-    </div>
-    <div class="card">
-      <div class="card-h">最近任务<span class="sub">按 Token 排序 · 最多 8 条</span></div>
-      <div class="card-p" style="padding:0">
-        <div v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" class="utask" :class="{zero:!t.tokens}">
-          <div><div class="utask-title">{{t.title}}</div><div class="utask-meta">{{t.tool}} · {{t.project}} · {{t.model}} · {{t.created_at.replace('T',' ')}}</div></div>
-          <div class="utask-token">{{t.tokens?tok(t.tokens):'—'}}</div>
-        </div>
-        <div class="empty" v-if="!d.recent_tasks.length">暂无会话</div>
+      </div>
+      <div class="ublock">
+        <h3>趋势注脚</h3>
+        <table class="utable">
+          <tbody>
+            <tr><td>最高一天</td><td>{{peakDay}}</td><td class="num">{{tok(maxValue)}}</td></tr>
+            <tr><td>典型活跃日</td><td>中位数</td><td class="num">{{tok(medianValue)}}</td></tr>
+            <tr><td>高峰门槛</td><td>P90</td><td class="num">{{tok(p90Value)}}</td></tr>
+            <tr><td>高于门槛</td><td>共 {{peakDays}} 天</td><td class="num">{{peakShare}}%</td></tr>
+            <tr><td>峰谷比</td><td>最忙 / 最闲</td><td class="num">{{swingRatio}}×</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
+
+    <div class="usplit">
+      <div class="ublock">
+        <h3>模型<span>按处理量</span></h3>
+        <table class="utable cols-2">
+          <tbody><tr v-for="m in d.models.slice(0,7)" :key="m.name">
+            <td :title="m.name">{{m.name}}</td>
+            <td class="dim">{{m.tasks?n(m.tasks)+' 个':'—'}}</td>
+            <td class="num">{{tok(m.tokens)}}</td>
+          </tr></tbody>
+        </table>
+      </div>
+      <div class="ublock">
+        <h3>项目<span>{{selected?selected+' 活跃':'按工作目录'}}</span></h3>
+        <table class="utable cols-2">
+          <tbody><tr v-for="x in projectRows.slice(0,7)" :key="x.name+x.cwd">
+            <td :title="x.cwd||x.name">{{x.name}}</td>
+            <td class="dim">{{x.tasks?n(x.tasks)+' 个':'—'}}</td>
+            <td class="num">{{tok(x.tokens)}}</td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ublock" v-if="d.insights&&d.insights.length">
+      <h3>值得注意</h3>
+      <ul class="unotes">
+        <li v-for="x in d.insights" :key="x.label" :class="{warn:x.level==='warn'}">
+          <b>{{x.value}}</b> <span class="unote-label">{{x.label}}</span> — {{x.detail}}
+        </li>
+      </ul>
+    </div>
+
+    <div class="ublock">
+      <h3>最近会话<span>取处理量最高的 8 条</span></h3>
+      <table class="utable cols-4">
+        <tbody><tr v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" :class="{zero:!t.tokens}">
+          <td :title="t.title">{{t.title}}</td>
+          <td class="dim">{{t.tool}} · {{t.project}} · {{t.model}}</td>
+          <td class="dim">{{t.created_at.slice(5,16).replace('T',' ')}}</td>
+          <td class="num">{{t.tokens?tok(t.tokens):'—'}}</td>
+        </tr></tbody>
+      </table>
+    </div>
+
     <p class="ufootnote">{{d.methodology}} 缓存输入是输入 Token 的子集；不同模型的 Token 不应直接换算为成本。</p>
   </template>
 </div>`
-
 }).component('stgs',{props:['token','toast','saveToken'],setup(p){
   const defaults={backend_url:'https://copilot.tencent.com',default_domain:'www.codebuddy.cn',timeout:300,auth_failure_threshold:3,base_url:'http://127.0.0.1:8787/v1',admin_auth:localMode?'本机自动授权':'Admin Token',data_file:'codebuddy_gateway.db'};
   const s=ref({...defaults}),stats=ref(null),ld=ref(true),saving=ref(false),copied=ref(''),setupTab=ref('codex'),adminToken=ref(p.token||'');
