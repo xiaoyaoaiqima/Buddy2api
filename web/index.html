@@ -485,6 +485,7 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .ublock{margin-bottom:26px}
 .ublock h3{display:flex;align-items:baseline;gap:10px;margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
 .ublock h3 span{font-size:11px;font-weight:400;color:var(--fg2)}
+.ublock h3 em{margin-left:auto;font-style:normal;font-size:11px;font-weight:400;color:var(--fg2);font-family:var(--mono)}
 .urow{margin-bottom:13px}
 .urow-head{display:flex;justify-content:space-between;gap:10px;font-size:12px}
 .urow-name{font-weight:600}
@@ -1677,6 +1678,30 @@ const app=createApp({
     return /^\d{4}-\d{2}-\d{2}[-_]\d{2}[-_]\d{2}[-_]\d{2}$/.test(s)?'临时会话':(s||'—');
   }
   // 「处理量」含缓存复用，容易被读成"烧了这么多额度"。把真实新增单列出来。
+  // 当前统计窗口的可读标签。切到「近 7 日」这类短窗口时，各工具/项目的排名会剧烈
+  // 变化（实测 Codex 近 7 日 26M vs 近 30 日 2.46B，差 94 倍），读者容易以为统计坏了。
+  // 所以每个区块的副标题都带上窗口，滚到哪都知道自己在看什么。
+  // 短窗口会让排名剧烈波动（工具/项目在 7 日 vs 30 日能差几十倍）。当某个来源在
+  // 当前窗口里明显低于它在全量的占比时，说明它只是这段时间没用 —— 点出来，
+  // 免得读者以为"统计少了"。判据用「当前窗口内该工具为 0 或极少」+ 「窗口 < 14 天」。
+  const shortWindowHint=computed(()=>{
+    const s=d.value?.summary;if(!s?.first_date||!s?.last_date)return '';
+    const days=Math.round((new Date(s.last_date)-new Date(s.first_date))/86400000)+1;
+    if(days>=14)return '';
+    const total=Number(s.tokens||0);if(!total)return '';
+    const tiny=(d.value.tools||[]).filter(t=>Number(t.tokens||0)/total<0.01).map(t=>t.name);
+    if(!tiny.length)return '';
+    return `${days} 天内没有明显用量：${tiny.join('、')} —— 它们在更长的范围里可能有量。`;
+  });
+  const scopeLabel=computed(()=>{
+    const s=d.value?.summary;if(!s)return '';
+    // "近 7 日" 本身已含天数，再补"（7 天）"是重复。只在两者不一致时补实际跨度
+    // —— 例如选了"全部"或数据不足整段时，真实跨度与标签不同，那时说明才有价值。
+    const label=String(d.value?.range_label||'');
+    const days=s.first_date&&s.last_date?Math.round((new Date(s.last_date)-new Date(s.first_date))/86400000)+1:0;
+    if(!days)return label;
+    return label.includes(String(days))?`${label} · ${s.first_date}~${s.last_date}`:`${label}（实际 ${days} 天）`;
+  });
   const freshTokens=computed(()=>Number(d.value?.summary?.non_cached_input_tokens||0)+Number(d.value?.summary?.output_tokens||0));
   const avgPerCall=computed(()=>{
     const r=Number(d.value?.summary?.requests||0);
@@ -1707,7 +1732,7 @@ const app=createApp({
   onMounted(load);
   return{d,ld,err,range,tool,provider,metric,view,selected,ranges,metrics,toolNames,toolColors,
     load,pickRange,pickTool,pickProvider,tok,n,pct,valueOf,daily,maxValue,medianValue,p90Value,
-    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,topProjectShare,topModel,topModelShare,avgPerCall,projectLabel,freshTokens,I}
+    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,topProjectShare,topModel,topModelShare,avgPerCall,projectLabel,freshTokens,scopeLabel,shortWindowHint,I}
 },template:`
 <div>
   <div class="tbar utopbar">
@@ -1784,15 +1809,16 @@ const app=createApp({
 
     <div class="usplit">
       <div class="ublock">
-        <h3>构成<span>{{selected?selected+' 当天':'整个范围'}}</span></h3>
+        <h3>构成<span>{{selected?selected+' 当天':'整个范围'}}</span><em>{{scopeLabel}}</em></h3>
         <div v-for="t in d.tools" :key="t.key" class="urow">
           <div class="urow-head"><span class="urow-name">{{t.name}}</span><span class="urow-val">{{tok(t.tokens)}}</span></div>
           <div class="urow-track"><div class="urow-fill" :style="{width:(t.tokens/rankMax(d.tools,'tokens')*100)+'%',background:toolColors[t.key]}"></div></div>
           <div class="urow-sub">{{t.tasks?n(t.tasks)+' 个会话':'无独立会话'}}{{t.data_quality==='完整'?'':' · 子 Agent 拆分不可用'}}</div>
         </div>
+        <p class="ublock-note" v-if="shortWindowHint">{{shortWindowHint}}</p>
       </div>
       <div class="ublock">
-        <h3>分布特征</h3>
+        <h3>分布特征<em>{{scopeLabel}}</em></h3>
         <table class="utable">
           <tbody>
             <tr><td>最高一天</td><td>{{peakDay}}</td><td class="num">{{tok(maxValue)}}</td></tr>
@@ -1807,7 +1833,7 @@ const app=createApp({
 
     <div class="usplit">
       <div class="ublock">
-        <h3>项目<span>{{selected?selected+' 活跃':'按工作目录'}}</span></h3>
+        <h3>项目<span>{{selected?selected+' 活跃':'按工作目录'}}</span><em>{{scopeLabel}}</em></h3>
         <table class="utable cols-2">
           <tbody><tr v-for="x in projectRows.slice(0,6)" :key="x.name+x.cwd">
             <td :title="x.cwd||x.name">{{x.name}}</td>
@@ -1818,7 +1844,7 @@ const app=createApp({
         <p class="ublock-note">共 {{n(d.summary.projects)}} 个项目，前 6 个占 {{topProjectShare}}%。模型维度：最高是 <b>{{topModel.name}}</b>（{{tok(topModel.tokens)}}，占 {{topModelShare}}%）。</p>
       </div>
       <div class="ublock">
-        <h3>最近会话<span>取处理量最高的 8 条</span></h3>
+        <h3>最近会话<span>取处理量最高的 8 条</span><em>{{scopeLabel}}</em></h3>
         <table class="utable cols-4">
           <tbody><tr v-for="t in recentSorted.slice(0,8)" :key="t.title+t.created_at" :class="{zero:!t.tokens}">
             <td :title="t.title+' · '+t.project">{{t.title}}</td>

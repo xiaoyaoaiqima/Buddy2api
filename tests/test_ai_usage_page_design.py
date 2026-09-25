@@ -364,3 +364,25 @@ def test_main_number_declares_cache_share(usage_src):
     body = cap.group(0)
     assert "cache_ratio" in body, "主数没有说明缓存占比"
     assert "freshTokens" in body, "主数没有给出真实新增量"
+
+
+def test_every_block_declares_its_time_window(usage_src):
+    """每个区块都要标出当前统计窗口。
+
+    起因：用户在「近 7 日」下看到 Codex 只有 26M（近 30 日是 2.46B，差 94 倍），
+    怀疑"按项目区分有 bug"。数据没错，是**滚动到区块时窗口选择器已在屏幕外**
+    （实测滚到项目区块时 range 按钮 top=-541），读者无从知道自己在看哪个窗口。
+    """
+    heads = re.findall(r"<h3>(.*?)</h3>", usage_src, re.S)
+    assert heads, "找不到区块标题"
+    missing = [h for h in heads if "scopeLabel" not in h]
+    assert not missing, f"这些区块没有标出统计窗口：{missing}"
+
+
+def test_short_window_warns_about_absent_sources(usage_src):
+    """短窗口下要提示"这些来源这段时间没有量"，避免被读成统计缺失。"""
+    assert "shortWindowHint" in usage_src, "缺少短窗口提示"
+    fn = re.search(r"const shortWindowHint=computed\(\(\)=>\{(.*?)\n  \}\)", usage_src, re.S)
+    assert fn, "找不到 shortWindowHint"
+    body = fn.group(0)
+    assert "18" in body or "14" in body, "没有基于窗口长度判断，长窗口也会误报"
