@@ -201,3 +201,74 @@ def test_codex_path_is_overridable(tmp_path):
 
     helper = inspect.getsource(collectors._codex_payload)
     assert "state_db" in helper, "_codex_payload 没有把 state_db 透传下去"
+
+
+# ── 重复统计：客户端流量不能既算轨迹又算网关 ──
+# 实测（2026-09-24）：key=dsh 是 DSH(codex 客户端) 在用，网关侧 2.49B 与 codex 源里
+# 同名模型的 2.56B 是同一批调用，页面总量因此虚高 26%。dsh 经确认只用于本机客户端。
+
+def test_client_owned_keys_are_excluded_by_default(tmp_path):
+    """默认排除 dsh：它的流量已由客户端轨迹统计。"""
+    from buddy2api.ai_usage.gateway_source import excluded_key_names
+
+    assert "dsh" in excluded_key_names()
+
+
+def test_excluded_key_rows_are_not_returned(tmp_path):
+    """排除要在 SQL 层生效：dsh 的行不该出现在结果里。"""
+    now = _now()
+    db = _make_db(tmp_path, [
+        {"key_id": 1, "key_name": "dsh", "at": now, "prompt": 1000, "total": 1000},
+        {"key_id": 7, "key_name": "a5-other", "at": now, "prompt": 500, "total": 500},
+    ])
+    sessions, events = load_gateway(db)
+    titles = {s["title"] for s in sessions}
+    assert "dsh" not in titles, "被重复统计的 key 仍然计入"
+    assert "a5-other" in titles, "误伤了不该排除的 key"
+    assert sum(e["total_tokens"] for e in events) == 500
+
+
+def test_exclusion_is_case_insensitive(tmp_path):
+    """key 名大小写不该影响排除结果。"""
+    now = _now()
+    db = _make_db(tmp_path, [
+        {"key_id": 1, "key_name": "DSH", "at": now, "prompt": 999, "total": 999},
+        {"key_id": 7, "key_name": "keep", "at": now, "prompt": 111, "total": 111},
+    ])
+    _, events = load_gateway(db)
+    assert sum(e["total_tokens"] for e in events) == 111
+
+
+def test_exclusion_can_be_overridden(monkeypatch, tmp_path):
+    """可用环境变量覆盖；设为 '-' 表示不排除（需要看全量网关流量时用）。"""
+    now = _now()
+    db = _make_db(tmp_path, [
+        {"key_id": 1, "key_name": "dsh", "at": now, "prompt": 700, "total": 700},
+    ])
+    monkeypatch.setenv("CB_GATEWAY_USAGE_EXCLUDE_KEYS", "-")
+    _, events = load_gateway(db)
+    assert sum(e["total_tokens"] for e in events) == 700
+
+    monkeypatch.setenv("CB_GATEWAY_USAGE_EXCLUDE_KEYS", "other-key")
+    _, events2 = load_gateway(db)
+    assert sum(e["total_tokens"] for e in events2) == 700
+
+
+def test_total_no_longer_double_counts(monkeypatch, tmp_path):
+    """端到端：网关侧与"客户端轨迹"同源的钱不能被算两次。
+
+    这里模拟 codex 源已统计过 dsh 的那部分，网关侧必须不再计入。
+    """
+    from buddy2api.ai_usage import collectors
+
+    now = _now()
+    db = _make_db(tmp_path, [
+        {"key_id": 1, "key_name": "dsh", "at": now, "prompt": 1000, "total": 1000},
+        {"key_id": 7, "key_name": "phone", "at": now, "prompt": 250, "total": 250},
+    ])
+    sessions, events = load_gateway(db)
+    payload = collectors._external_payload(
+        "gateway", sessions, events, range_key="30", provider="all",
+        now=now.astimezone(collectors.LOCAL_TZ),
+    )
+    assert payload["summary"]["tokens"] == 250, "重复统计没有被剔除"

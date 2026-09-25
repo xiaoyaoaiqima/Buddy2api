@@ -10,10 +10,20 @@
 所以这里把网关日志映射成与其它数据源同构的 `(sessions, events)`：
 **一个 api_key 一条"会话"**。理由是这样能落进现有聚合逻辑而不用改它，同时在
 项目/模型分布里表现为"哪个 key 在用、用的什么模型"——这正是网关视角下最自然的切分。
+
+## 必须排除会被重复统计的 key
+
+客户端轨迹与网关日志**会重叠**：同一个客户端如果走本网关，它的调用既被自己记进
+本机轨迹，又被网关记进 `logs`。两边都算就是同一批 token 统计两次。
+
+实测（2026-09-24）：`dsh` 这个 key 是 DSH 自己（codex 客户端）在用，网关侧 2.49B，
+而 codex 源里同名模型的 2.56B 是同一批调用 —— 页面总量因此虚高 **26%**。
+`dsh` 经确认**只**用于本机客户端，所以由 `EXCLUDED_KEY_NAMES` 排除。
 """
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -24,6 +34,17 @@ from buddy2api.ai_usage.collectors import _event, _session
 
 # 网关自己没有"项目"概念，用这个占位名归入项目分布，避免和其它工具的真实目录混在一起
 GATEWAY_CWD = "（网关直连）"
+
+# 这些 api_key 名下的流量已经由客户端轨迹统计过，网关侧不再计入，避免重复统计。
+# 可用 CB_GATEWAY_USAGE_EXCLUDE_KEYS 覆盖（逗号分隔）；设为 "-" 表示不排除任何 key。
+DEFAULT_EXCLUDED_KEY_NAMES = ("dsh",)
+
+
+def excluded_key_names() -> set[str]:
+    raw = os.environ.get("CB_GATEWAY_USAGE_EXCLUDE_KEYS")
+    if raw is None:
+        return {n.casefold() for n in DEFAULT_EXCLUDED_KEY_NAMES}
+    return {n.strip().casefold() for n in raw.split(",") if n.strip() and n.strip() != "-"}
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -46,13 +67,20 @@ def load_gateway(
     path = Path(db_path).expanduser()
     if not path.exists():
         return [], []
+    excluded = excluded_key_names()
     conn = _connect(path)
     try:
         params: list[Any] = []
-        where = ""
+        clauses: list[str] = []
         if since is not None:
-            where = " WHERE created_at >= ?"
+            clauses.append("created_at >= ?")
             params.append(int(since.timestamp()))
+        # 排除会被客户端轨迹重复统计的 key（SQL 里做，避免把大表整读进内存再丢）
+        if excluded:
+            placeholders = ",".join("?" for _ in excluded)
+            clauses.append(f"LOWER(COALESCE(api_key_name,'')) NOT IN ({placeholders})")
+            params.extend(sorted(excluded))
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         rows = conn.execute(
             f"""
             SELECT api_key_id, api_key_name, model, prompt_tokens, completion_tokens,

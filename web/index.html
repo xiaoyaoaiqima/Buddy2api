@@ -434,6 +434,7 @@ table{font-size:12px}.table-scroll{background:#fff}th{padding:9px 12px;backgroun
 .uhero{display:flex;gap:44px;align-items:flex-end;flex-wrap:wrap;padding-bottom:20px;border-bottom:1px solid var(--border);margin-bottom:22px}
 .uhero-num{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1;letter-spacing:-.02em}
 .uhero-cap{font-size:12px;color:var(--fg2);margin-top:8px}
+.uhero-note{display:block;margin-top:4px;font-size:11px;color:var(--fg2)}
 .uhero-facts{display:flex;gap:36px;flex-wrap:wrap}
 .ufact{max-width:210px}
 .ufact-n{display:block;font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.1}
@@ -1675,6 +1676,8 @@ const app=createApp({
     const s=String(p||'').trim();
     return /^\d{4}-\d{2}-\d{2}[-_]\d{2}[-_]\d{2}[-_]\d{2}$/.test(s)?'临时会话':(s||'—');
   }
+  // 「处理量」含缓存复用，容易被读成"烧了这么多额度"。把真实新增单列出来。
+  const freshTokens=computed(()=>Number(d.value?.summary?.non_cached_input_tokens||0)+Number(d.value?.summary?.output_tokens||0));
   const avgPerCall=computed(()=>{
     const r=Number(d.value?.summary?.requests||0);
     return r?Number(d.value?.summary?.tokens||0)/r:0;
@@ -1704,7 +1707,7 @@ const app=createApp({
   onMounted(load);
   return{d,ld,err,range,tool,provider,metric,view,selected,ranges,metrics,toolNames,toolColors,
     load,pickRange,pickTool,pickProvider,tok,n,pct,valueOf,daily,maxValue,medianValue,p90Value,
-    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,topProjectShare,topModel,topModelShare,avgPerCall,projectLabel,I}
+    barHeight,isPeak,rowSegments,pickDay,projectRows,rankMax,dayLabel,tipRows,tipStyle,hover,yTicks,legendOf,recentSorted,gatewayShare,peakDay,peakDays,peakShare,swingRatio,chartTitle,topProjectShare,topModel,topModelShare,avgPerCall,projectLabel,freshTokens,I}
 },template:`
 <div>
   <div class="tbar utopbar">
@@ -1730,7 +1733,7 @@ const app=createApp({
     <div class="uhero">
       <div class="uhero-main">
         <div class="uhero-num">{{tok(d.summary.tokens)}}</div>
-        <div class="uhero-cap">{{d.range_label}}{{d.summary.first_date?' · '+d.summary.first_date+' 至 '+d.summary.last_date:''}} 处理量</div>
+        <div class="uhero-cap">{{d.range_label}}{{d.summary.first_date?' · '+d.summary.first_date+' 至 '+d.summary.last_date:''}} 处理量<span class="uhero-note">其中 {{pct(d.summary.cache_ratio)}} 是缓存复用，新增读取约 {{tok(freshTokens)}}</span></div>
       </div>
       <div class="uhero-facts">
         <div class="ufact"><span class="ufact-n">{{pct(d.summary.cache_ratio)}}</span><span class="ufact-l">缓存命中：输入里被复用的比例，越高越省</span></div>

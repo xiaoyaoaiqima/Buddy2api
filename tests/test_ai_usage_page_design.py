@@ -352,3 +352,15 @@ def test_tooltip_width_is_bounded(css):
     m = re.search(r"\.utip\{([^}]*)\}", css)
     assert m, "找不到 .utip"
     assert "max-width" in m.group(1), "浮层没有最大宽度限制"
+
+
+def test_main_number_declares_cache_share(usage_src):
+    """主数是"处理量"，含缓存复用 —— 必须说明，否则会被读成"烧了这么多额度"。
+
+    实测：全库 prompt 的 84.6% 是缓存命中，真实新增只有 1/5 左右。
+    """
+    cap = re.search(r'<div class="uhero-cap">(.*?)</div>', usage_src, re.S)
+    assert cap, "找不到主数说明"
+    body = cap.group(0)
+    assert "cache_ratio" in body, "主数没有说明缓存占比"
+    assert "freshTokens" in body, "主数没有给出真实新增量"
