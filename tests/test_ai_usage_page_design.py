@@ -386,3 +386,39 @@ def test_short_window_warns_about_absent_sources(usage_src):
     assert fn, "找不到 shortWindowHint"
     body = fn.group(0)
     assert "18" in body or "14" in body, "没有基于窗口长度判断，长窗口也会误报"
+
+
+def test_x_axis_aligns_with_centered_bars(usage_src, css):
+    """x 轴刻度必须与柱子逐列对齐。
+
+    柱子加了宽度上限并居中后，轴若仍 space-between 铺满整宽，首尾日期会指到
+    没有柱子的地方（实测轴标签在整宽两端、柱子只占中间 594~1054）。
+    解法是让轴复用柱区的布局规则（同样的 flex + 左留白 + 同样的列宽上限），
+    每个刻度占据它那一列 —— 而不是猜宽度。
+    """
+    assert "ux-axis-plot" in usage_src, "x 轴没有复用柱区布局"
+    assert "axisTick" in usage_src, "x 轴没有按列决定显示哪些刻度"
+    plot = re.search(r"\.uchart-plot\{([^}]*)\}", css)
+    axis = re.search(r"\.ux-axis-plot\{([^}]*)\}", css)
+    assert plot and axis, "找不到柱区或轴区样式"
+    # 两者必须用同样的左留白（y 轴占位）与居中策略
+    for key in ("padding-left:48px", "justify-content:center"):
+        assert key in plot.group(1), f"柱区缺少 {key}"
+        assert key in axis.group(1), f"轴区缺少 {key}（会与柱子错位）"
+    cell = re.search(r"\.ux-cell\{([^}]*)\}", css)
+    bar = re.search(r"\.ubar-wrap\{([^}]*)\}", css)
+    assert cell and bar, "找不到列样式"
+    # 列宽规则必须一致，否则刻度会累积偏移
+    for key in ("max-width:64px", "flex:1 1 0"):
+        assert key in bar.group(1), f"柱子缺少 {key}"
+        assert key in cell.group(1), f"轴列缺少 {key}（会与柱子错位）"
+
+
+def test_bar_width_is_capped(css):
+    """柱子必须有宽度上限。
+
+    7 天视图下若不限制，每根会拉到 210px 变成"胖方块"——和 190px 高那版是同一个病的
+    两个极端。上限让短范围看起来仍是"日序列"。
+    """
+    bar = re.search(r"\.ubar-wrap\{([^}]*)\}", css)
+    assert bar and "max-width" in bar.group(1), "柱子没有宽度上限，短范围会变成胖方块"
