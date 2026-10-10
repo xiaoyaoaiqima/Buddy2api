@@ -3506,6 +3506,93 @@ def test_stall_detection_rejects_summary():
     assert not proxy._is_tool_stall(body, "stop", False, "任务完成，总结如下：共处理 3 个文件。")
 
 
+# 下面三条正文是从 codebuddy_gateway.db 的 logs 表里捞出来的真实样本：
+# 它们当时都被判成 tool_stall，导致整轮重打（prompt_tokens 最高 342498，等于
+# 同一份上下文付了两次钱）。文本短 ≠ 停转，这是那次误判的根因。
+_STALL_REGRESSION_REAL_TEXTS = (
+    # 2026-10-09 23:41:46 deepseek-v4.1-flash，prompt_tokens=111097
+    "改动已记录，续接步骤写在文档里了。\n\n"
+    "**当前状态一句话**：代码完成、86 个测试 + 类型检查 + 构建全过、制品已打包；"
+    "**只差同步 dev 和浏览器实测**，被内网不通挡住。\n\n"
+    "等你确认 VPN 恢复，我就把 dist 推上去实测。",
+    # 2026-10-10 11:44:04 deepseek-v4.1-flash@team-buka，prompt_tokens=342498
+    "## Primary Request and Intent\n- Initial: investigate a 409 on "
+    "`POST https://a2-raap.sharpasshark.com/api/v1/contents/272276/review-lease`",
+    # 2026-10-08 21:53:03 deepseek-v4.1-flash@team-buka，prompt_tokens=71448
+    "I now have the complete, verified picture. Let me correct my earlier mistaken claim.\n\n"
+    "## 更正：美素 trace 数据**能**通过 API 拿到",
+)
+
+
+@pytest.mark.parametrize("text", _STALL_REGRESSION_REAL_TEXTS)
+def test_stall_detection_allows_short_completion(text):
+    """短收尾回复不得判为停转 —— 即便它很短、且没调用工具。"""
+    assert not proxy._looks_like_stall_text(text)
+    assert not proxy._is_tool_stall(_tool_loop_body(), "stop", False, text)
+
+
+def test_stall_detection_still_catches_real_acks():
+    """收紧后仍要能抓到真正的「我这就去做」停转话术。"""
+    body = _tool_loop_body()
+    for text in ("好的，马上继续。", "稍等", "Got it, continuing.", "one moment"):
+        assert proxy._looks_like_stall_text(text), text
+        assert proxy._is_tool_stall(body, "stop", False, text), text
+
+
+def test_stall_detection_tiny_filler_without_marker():
+    """极短的敷衍话术不含任何话术词，也要判停转；正常短收尾不能误伤。"""
+    assert proxy._looks_like_stall_text("好的")
+    assert proxy._looks_like_stall_text("收到")
+    # 超过 _STALL_TINY_LIMIT 的正文已能承载结果，即便不含任何话术词也放行。
+    # 边界本身就是约定：15 字符仍算敷衍，40 字符的正常收尾不得误伤。
+    assert proxy._looks_like_stall_text("已经改完了，测试全过，你验收吧")
+    assert not proxy._looks_like_stall_text(
+        "已经改完了，86 个测试和类型检查全过，你验收一下吧，我等你回复。"
+    )
+
+
+def test_stall_retry_not_triggered_for_real_completion(monkeypatch, isolated_db):
+    """真实收尾回复不得触发重打 —— 上游只应被调用一次（不重复烧 prompt_tokens）。"""
+    completion = _STALL_REGRESSION_REAL_TEXTS[0]
+    completion_json = {
+        "id": "c1", "object": "chat.completion", "created": 1, "model": "auto",
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": completion},
+                     "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 342498, "completion_tokens": 4250},
+    }
+
+    calls = []
+    account = {"id": 1, "name": "test-account"}
+
+    async def pick_account(_excluded, model=None):
+        return account
+
+    async def valid_headers(_account):
+        return {"Authorization": "Bearer test"}
+
+    async def fake_collect(url, headers, body, account, api_key_info, model_name, t0):
+        calls.append(body.get("tool_choice"))
+        return ("json", completion_json)
+
+    monkeypatch.setattr(proxy, "TOOL_STALL_RETRY", True)
+    monkeypatch.setattr(proxy, "_collect_stream", fake_collect)
+    monkeypatch.setattr(auth_manager, "pick_account_with_fallback", pick_account)
+    monkeypatch.setattr(auth_manager, "get_valid_headers", valid_headers)
+    monkeypatch.setattr(auth_manager, "mark_account_success", lambda _id, _model=None: None)
+    monkeypatch.setattr(auth_manager, "mark_account_failure", lambda *_a: None)
+    monkeypatch.setattr(auth_manager, "backend_url", lambda: "https://upstream.test")
+    monkeypatch.setattr(auth_manager, "request_timeout", lambda _default: 30)
+
+    async def run():
+        return await proxy.proxy_chat_completions(_tool_loop_body(), None)
+
+    result = asyncio.run(run())
+    assert result[0] == "json"
+    assert result[1]["choices"][0]["message"]["content"] == completion
+    # 关键断言：没有第二次上游请求，也就没有 tool_choice=required 重打。
+    assert calls == [None]
+
+
 def test_stall_detection_requires_tool_loop_and_tools():
     no_tool_history = {
         "model": "auto",

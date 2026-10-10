@@ -87,7 +87,11 @@ _STALL_NEGATIVE_MARKERS_EN = (
     "in summary", "to summarize", "task complete", "already done",
     "all done", "here's the result", "here is the result",
 )
-_STALL_SHORT_LIMIT = 400
+# 「敷衍话术」上限：这类回复短得不可能承载任何结果（「好的」「收到」），
+# 且不含正向/负向话术时仍按停转处理。真正的收尾回复几乎都远超这个长度。
+# 它同时是 _ContentHold 的扣留窗口 —— 能判成停转的回复本来就短，
+# 窗口因此极小，流式输出几乎立刻转直通。
+_STALL_TINY_LIMIT = 24
 
 
 def _request_has_tool_loop(body: dict) -> bool:
@@ -101,7 +105,13 @@ def _request_has_tool_loop(body: dict) -> bool:
 
 
 def _looks_like_stall_text(text: str) -> bool:
-    """空内容或短的非总结回复视为 stall；长文本仍要像确认话术。"""
+    """判断这段纯文本像不像「工具停转」的确认话术。
+
+    判定必须要有**正向信号**：空正文，或命中明确的「我这就去做」话术。
+    「短」本身不再是停转证据 —— 收尾回复同样很短，历史上把
+    「改动已记录…等你确认 VPN 恢复」这类正常收尾判成停转，触发整轮重打，
+    几十万 token 的上下文白烧一次（见 tests/test_core.py 的回归用例）。
+    """
     text = (text or "").strip()
     if not text:
         return True
@@ -111,8 +121,14 @@ def _looks_like_stall_text(text: str) -> bool:
         return False
     if any(marker in lower for marker in _STALL_NEGATIVE_MARKERS_EN):
         return False
-    if len(collapsed) <= _STALL_SHORT_LIMIT:
+    if _has_stall_positive_marker(collapsed, lower):
         return True
+    # 无正向话术：长文本按正常收尾放行；极短的敷衍话术（「好的」）仍判停转。
+    return len(collapsed) <= _STALL_TINY_LIMIT
+
+
+def _has_stall_positive_marker(collapsed: str, lower: str) -> bool:
+    """是否命中「我这就继续」类话术 —— 停转判定唯一强正向证据。"""
     return any(marker in collapsed for marker in _STALL_POSITIVE_MARKERS) or any(
         marker in lower for marker in _STALL_POSITIVE_MARKERS_EN
     )
@@ -163,8 +179,9 @@ class _ContentHold:
     停转判定只看正文（见 _is_tool_stall），不看 reasoning_content，所以推理内容始终
     即时下发 —— 客户端至少能立刻看到思考过程，而不是干等。
 
-    阈值用原始字符数近似 _looks_like_stall_text 里「去空白后的长度」：可能极少数
-    情况下提前放行（正文含大量空白），后果只是这一轮不再重打、原样透传，不会误伤。
+    阈值与 _looks_like_stall_text 的 _STALL_TINY_LIMIT 对齐：能判成停转的回复本来就
+    短（敷衍话术），扣留窗口因此极小，几乎立刻转直通。早期用的是 400 字符，
+    意味着任何正常回复的前 400 字符都要先被扣住 —— 流式首字节被无谓地推迟。
     """
 
     def __init__(self, limit: int):
@@ -1388,7 +1405,7 @@ async def _stream_upstream(
         last_started = t0
         observer = _ChatStreamObserver(body.get("model") or model_name, body.get("n", 1))
         decoder = _SSEEventDecoder()
-        hold = _ContentHold(_STALL_SHORT_LIMIT) if hold_content else None
+        hold = _ContentHold(_STALL_TINY_LIMIT) if hold_content else None
         output_started = False
         pending_terminal_events: list[bytes] = []
         pending_terminal_bytes = 0
